@@ -7,6 +7,7 @@ import os
 import logging
 from db import get_chain, insert_chain
 from chain_worker import ChainWorker
+from meta_filler import MetaFillerWorker
 
 logging.basicConfig(
     level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s"
@@ -72,6 +73,10 @@ def main():
         worker = ChainWorker(chain_doc)
         worker.start()
         workers.append(worker)
+    # Start meta_filler worker in parallel
+    meta_filler = MetaFillerWorker()
+    meta_filler.start()
+    workers.append(meta_filler)
     for worker in workers:
         worker.join()
 
