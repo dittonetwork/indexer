@@ -105,7 +105,7 @@ class ChainWorker(threading.Thread):
                 continue  # skip this batch
 
             # ---- Decode & bucket -----------------------------------------
-            decoded_events = []  # (name, decoded_log, timestamp)
+            decoded_events = []  # (name, decoded_log, timestamp, tx_receipt)
             block_ts_cache = {}  # block_number -> ISO timestamp
             for raw in raw_logs:
                 topic0 = raw["topics"][0].hex()
@@ -128,18 +128,30 @@ class ChainWorker(threading.Thread):
                         decoded = decoder.process_log(raw)
                     else:
                         decoded = decoder.processLog(raw)
-                    decoded_events.append((name, decoded, timestamp))
+                    tx_receipt = None
+                    if name == "Run":
+                        try:
+                            tx_receipt = self.web3.eth.get_transaction_receipt(
+                                raw["transactionHash"]
+                            )
+                        except Exception as e:
+                            logging.error(
+                                f"[Chain {self.chain_id}] Error fetching tx receipt for {raw['transactionHash'].hex()}: {e}"
+                            )
+                    decoded_events.append((name, decoded, timestamp, tx_receipt))
                 except Exception as e:
                     logging.error(f"[Chain {self.chain_id}] {name} decode error: {e}")
 
             # ---- Persist atomically --------------------------------------
             with db_session() as session:
-                for name, evt, timestamp in decoded_events:
+                for name, evt, timestamp, tx_receipt in decoded_events:
                     try:
                         if name == "Created":
                             parse_created(evt, session, self.chain_id, timestamp)
                         elif name == "Run":
-                            parse_run(evt, session, self.chain_id, timestamp)
+                            parse_run(
+                                evt, session, self.chain_id, timestamp, tx_receipt
+                            )
                         else:  # Cancelled
                             parse_cancelled(evt, session, self.chain_id, timestamp)
                     except Exception as e:

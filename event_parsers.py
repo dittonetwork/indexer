@@ -33,7 +33,7 @@ def parse_created(event, session, chain_id, timestamp):
         insert_workflow(workflow_doc, session=session)
 
 
-def parse_run(event, session, chain_id, timestamp):
+def parse_run(event, session, chain_id, timestamp, tx_receipt=None):
     """
     - Store event in logs
     - Find workflow by ipfs hash, increment 'runs'
@@ -50,6 +50,13 @@ def parse_run(event, session, chain_id, timestamp):
         "ipfs_hash": ipfs_hash,
         "timestamp": timestamp,
     }
+    if tx_receipt:
+        log_doc["tx_receipt"] = {
+            "gasUsed": tx_receipt.get("gasUsed"),
+            "gasPrice": tx_receipt.get("effectiveGasPrice")
+            or tx_receipt.get("gasPrice"),
+            "from": tx_receipt.get("from"),
+        }
     insert_log(log_doc, session=session)
     wf = find_workflow_by_ipfs(ipfs_hash, session=session)
     if wf:
