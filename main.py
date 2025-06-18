@@ -18,10 +18,26 @@ def load_config_chains():
     config_path = os.getenv("CHAINS_CONFIG_PATH", "chains_config.json")
     if os.path.exists(config_path):
         with open(config_path) as f:
-            chains = json.load(f)
-            if isinstance(chains, dict):
-                chains = [chains]
-            return chains
+            chains_data = json.load(f)
+            # If dict keyed by chain id, convert to list
+            if isinstance(chains_data, dict):
+                chains = []
+                for chain_id, chain_cfg in chains_data.items():
+                    # Try to get RPC_<chain_id> from env
+                    env_var = f"RPC_{chain_id}"
+                    rpc_url = os.getenv(env_var)
+                    if rpc_url:
+                        chain_cfg["rpc_url"] = rpc_url
+                        logging.info(f"Using {env_var} from .env for chain {chain_id}")
+                    else:
+                        logging.info(f"Using rpc_url from config for chain {chain_id}")
+                    chains.append(chain_cfg)
+                return chains
+            elif isinstance(chains_data, list):
+                return chains_data
+            else:
+                logging.error("Invalid chains config format.")
+                return []
     else:
         logging.error(f"No chains config found at {config_path}!")
         return []
