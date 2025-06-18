@@ -29,60 +29,10 @@ db = client[DB_NAME]
 def fetch_ipfs_meta(ipfs_hash):
     url = IPFS_ENDPOINT.rstrip("/") + "/" + ipfs_hash
     try:
-        # resp = requests.get(url, timeout=30)
-        # resp.raise_for_status()
-        #     return resp.json()
-        return {
-            "ipfsHash": "QmXyz123...",
-            "chainIds": [1, 137],
-            "executions": 15,
-            "simulationConfig": [
-                {
-                    "eventTrigger": {
-                        "signature": "Transfer(address from, address to, uint256 amount)",
-                        "filter": {
-                            "address": "0xabc123...deadbeef",
-                            "to": "0xdef456...feedface",
-                        },
-                    }
-                },
-                {"type": "cron", "expression": "*/5 * * * *"},
-            ],
-            "account": {"address": "0x2cc1E1Dc713E17A0A295863F4C5F16034D0807dB"},
-            "metadata": {
-                "text": "Swap 10 DAI to 15 USDC after Transfer event is emitted"
-            },
-            "executionConfig": {
-                "actions": [
-                    {
-                        "session": {
-                            "params": {
-                                "permissionParams": {"policies": []},
-                                "action": {
-                                    "selector": "0xe9ae5c53",
-                                    "address": "0x0000000000000000000000000000000000000000",
-                                },
-                                "validityData": {"validAfter": 0, "validUntil": 0},
-                                "accountParams": {
-                                    "initCode": "0x",
-                                    "accountAddress": "0x2cc1E1Dc713E17A0A295863F4C5F16034D0807dB",
-                                },
-                                "enableSignature": "0x0b6a5a072eb53688c7724019a79bd529242c5d06ecddbe373e662f56e0d9992b73af25938ca9dda9f9e2d9ac222e8e419198d5c48ed021a73dd55445db32d0d51c",
-                            }
-                        },
-                        "runtime": {
-                            "runtimeId": "mvp-calldata",
-                            "params": {
-                                "to": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-                                "calldata": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-                                "chainId": 1,
-                            },
-                            "source": "export default async function run(ctx, params) { return { chainId: params.chainId, to: params.to, calldata: params.calldata) }; }",
-                        },
-                    }
-                ]
-            },
-        }
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+
     except Exception as e:
         logging.error(f"Failed to fetch IPFS meta for {ipfs_hash}: {e}")
         return None
