@@ -1,10 +1,23 @@
 from enum import Enum
 import logging
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configure logging once for the entire application
 logging.basicConfig(
     level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s"
 )
+
+# Database configuration
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+DB_NAME = os.getenv("DB_NAME", "indexer")
+
+# Meta filler configuration
+META_FILLER_SLEEP = int(os.getenv("META_FILLER_SLEEP", 60))  # seconds
+DEFAULT_IPFS_ENDPOINT = "https://ipfs.io/ipfs/"
+IPFS_ENDPOINT = os.getenv("IPFS_CONNECTOR_ENDPOINT", DEFAULT_IPFS_ENDPOINT)
 
 
 class EventType(Enum):

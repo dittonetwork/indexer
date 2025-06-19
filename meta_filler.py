@@ -8,17 +8,16 @@ from dotenv import load_dotenv
 from threading import Thread
 from croniter import croniter
 from datetime import datetime
-from constants import EventType  # Import shared constants
+from constants import (
+    MONGO_URI,
+    DB_NAME,
+    META_FILLER_SLEEP,
+    IPFS_ENDPOINT,
+)
 
 load_dotenv()
 
-SLEEP_DURATION = int(os.getenv("META_FILLER_SLEEP", 60))  # seconds
-default_ipfs_endpoint = "https://ipfs.io/ipfs/"
-IPFS_ENDPOINT = os.getenv("IPFS_CONNECTOR_ENDPOINT", default_ipfs_endpoint)
-
 # Direct MongoDB access for workflow scan (abstract if needed)
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-DB_NAME = os.getenv("DB_NAME", "indexer")
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 
@@ -84,7 +83,7 @@ def meta_filler_worker():
         wf = db["workflows"].find_one({"has_meta": False})
         if not wf:
             logging.info("No workflows without meta. Sleeping...")
-            time.sleep(SLEEP_DURATION)
+            time.sleep(META_FILLER_SLEEP)
             continue
         ipfs_hash = wf["ipfs_hash"]
         logging.info(f"Fetching meta for workflow {wf['_id']} (ipfs: {ipfs_hash})")
