@@ -10,6 +10,7 @@ from db import (
 from eth_utils.abi import abi_to_signature, filter_abi_by_type
 from event_parsers import parse_created, parse_run, parse_cancelled
 from datetime import datetime, timezone
+from constants import EventType
 
 
 class ChainWorker(threading.Thread):
@@ -30,17 +31,31 @@ class ChainWorker(threading.Thread):
         self.contract = self.web3.eth.contract(
             address=self.registry_address, abi=self.abi
         )
+        # Initialize decoder cache
+        self._init_decoder_cache()
 
-    def run(self):
-        logging.info(f"Worker started for chain {self.chain_id}")
-        while True:
-            try:
-                self.process_chain()
-            except Exception as e:
-                logging.error(f"[Chain {self.chain_id}] Error: {e}")
-            time.sleep(self.sleep_duration)
+    def _init_decoder_cache(self):
+        """Initialize event decoders cache"""
+        self._topic_map = {}
+        self._decoder_cache = {}
 
-    # At top-of-file (with the other imports)
+        # Grab just the *event* ABIs from the full contract ABI
+        event_abis = filter_abi_by_type("event", self.abi)
+
+        for ev_abi in event_abis:
+            if ev_abi["name"] not in EventType.get_target_names():
+                continue
+
+            # canonical signature, e.g. "Created(address,string,uint256)"
+            sig_text = abi_to_signature(ev_abi)
+            topic_hash = self.web3.keccak(text=sig_text).hex()
+
+            # Create decoder class once (web3.contract.ContractEvent)
+            decoder_cls = getattr(self.contract.events, ev_abi["name"])
+            decoder = decoder_cls()  # Create instance once
+
+            self._topic_map[topic_hash] = (ev_abi["name"], decoder)
+            self._decoder_cache[topic_hash] = decoder
 
     def process_chain(self):
         """
@@ -49,49 +64,19 @@ class ChainWorker(threading.Thread):
         • ONE eth_getLogs per batch (address-filtered)
         • Decode logs locally, route to the right parser, commit atomically
         """
-
-        # ------------------------------------------------------------------
-        # Build & cache: topic-0  ➜  (event_name, decoder_class)
-        # ------------------------------------------------------------------
-        # We only have to build this once per worker thread.
-        if not hasattr(self, "_topic_map"):
-            target_names = {"Created", "Run", "Cancelled"}
-
-            # Grab just the *event* ABIs from the full contract ABI
-            event_abis = filter_abi_by_type("event", self.abi)
-
-            self._topic_map = {}
-            for ev_abi in event_abis:
-                if ev_abi["name"] not in target_names:
-                    continue
-
-                # canonical signature, e.g. "Created(address,string,uint256)"
-                sig_text = abi_to_signature(ev_abi)
-                topic_hash = self.web3.keccak(text=sig_text).hex()
-
-                # decoder class (web3.contract.ContractEvent)
-                decoder_cls = getattr(self.contract.events, ev_abi["name"])
-                self._topic_map[topic_hash] = (ev_abi["name"], decoder_cls)
-
-        # ------------------------------------------------------------------
-        # Determine block range to scan
-        # ------------------------------------------------------------------
         latest_block = self.web3.eth.block_number - self.block_delay
         start_block = self.last_processed + 1
         if latest_block < start_block:
             return  # nothing new
         end_block = latest_block
 
-        # ------------------------------------------------------------------
         # Batch loop
-        # ------------------------------------------------------------------
         for batch_start in range(start_block, end_block + 1, self.batch_size):
             batch_end = min(batch_start + self.batch_size - 1, end_block)
             logging.info(
                 f"[Chain {self.chain_id}] Fetching logs {batch_start} → {batch_end}"
             )
 
-            # ---- ONE eth_getLogs for the whole batch ----
             try:
                 raw_logs = self.web3.eth.get_logs(
                     {
@@ -104,19 +89,19 @@ class ChainWorker(threading.Thread):
                 logging.error(f"[Chain {self.chain_id}] eth_getLogs error: {e}")
                 continue  # skip this batch
 
-            # ---- Decode & bucket -----------------------------------------
+            # Decode & bucket
             decoded_events = []  # (name, decoded_log, timestamp, tx_receipt)
             block_ts_cache = {}  # block_number -> ISO timestamp
+
             for raw in raw_logs:
                 topic0 = raw["topics"][0].hex()
                 mapping = self._topic_map.get(topic0)
                 if mapping is None:  # not Created / Run / Cancelled
                     continue
 
-                name, decoder_cls = mapping
-                decoder = decoder_cls()
+                name, decoder = mapping  # Use cached decoder
 
-                try:  # Web3.py 6.x vs 5.x compatibility
+                try:
                     block_number = raw["blockNumber"]
                     if block_number not in block_ts_cache:
                         block = self.web3.eth.get_block(block_number)
@@ -124,12 +109,14 @@ class ChainWorker(threading.Thread):
                             block["timestamp"], tz=timezone.utc
                         ).isoformat()
                     timestamp = block_ts_cache[block_number]
+
                     if hasattr(decoder, "process_log"):
                         decoded = decoder.process_log(raw)
                     else:
                         decoded = decoder.processLog(raw)
+
                     tx_receipt = None
-                    if name == "Run":
+                    if name == EventType.RUN.value:
                         try:
                             tx_receipt = self.web3.eth.get_transaction_receipt(
                                 raw["transactionHash"]
@@ -142,13 +129,13 @@ class ChainWorker(threading.Thread):
                 except Exception as e:
                     logging.error(f"[Chain {self.chain_id}] {name} decode error: {e}")
 
-            # ---- Persist atomically --------------------------------------
+            # Persist atomically
             with db_session() as session:
                 for name, evt, timestamp, tx_receipt in decoded_events:
                     try:
-                        if name == "Created":
+                        if name == EventType.CREATED.value:
                             parse_created(evt, session, self.chain_id, timestamp)
-                        elif name == "Run":
+                        elif name == EventType.RUN.value:
                             parse_run(
                                 evt, session, self.chain_id, timestamp, tx_receipt
                             )
@@ -163,3 +150,12 @@ class ChainWorker(threading.Thread):
 
             # ready for next batch
             self.last_processed = batch_end
+
+    def run(self):
+        logging.info(f"Worker started for chain {self.chain_id}")
+        while True:
+            try:
+                self.process_chain()
+            except Exception as e:
+                logging.error(f"[Chain {self.chain_id}] Error: {e}")
+            time.sleep(self.sleep_duration)

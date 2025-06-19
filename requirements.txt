@@ -1,6 +1,6 @@
-pymongo
-web3
-python-dotenv
-requests
-tenacity 
-croniter
+pymongo==4.5.0
+web3==6.5.0
+python-dotenv==1.0.0
+requests==2.31.0
+tenacity==8.2.3
+croniter==2.0.1

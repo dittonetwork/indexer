@@ -8,16 +8,13 @@ from dotenv import load_dotenv
 from threading import Thread
 from croniter import croniter
 from datetime import datetime
+from constants import EventType  # Import shared constants
 
 load_dotenv()
 
 SLEEP_DURATION = int(os.getenv("META_FILLER_SLEEP", 60))  # seconds
 default_ipfs_endpoint = "https://ipfs.io/ipfs/"
 IPFS_ENDPOINT = os.getenv("IPFS_CONNECTOR_ENDPOINT", default_ipfs_endpoint)
-
-logging.basicConfig(
-    level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s"
-)
 
 # Direct MongoDB access for workflow scan (abstract if needed)
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
