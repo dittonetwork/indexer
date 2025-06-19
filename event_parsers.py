@@ -1,6 +1,7 @@
 # event_parsers.py
 from db import insert_log, insert_workflow, find_workflow_by_ipfs, update_workflow
 from datetime import datetime
+from constants import EventStatus
 
 
 def parse_created(event, session, chain_id, timestamp):
@@ -13,7 +14,7 @@ def parse_created(event, session, chain_id, timestamp):
     block_number = event["blockNumber"]
     tx_hash = event["transactionHash"].hex()
     log_doc = {
-        "event": "Created",
+        "event": EventStatus.CREATED,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,
@@ -43,7 +44,7 @@ def parse_run(event, session, chain_id, timestamp, tx_receipt=None):
     block_number = event["blockNumber"]
     tx_hash = event["transactionHash"].hex()
     log_doc = {
-        "event": "Run",
+        "event": EventStatus.RUN,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,
@@ -60,7 +61,7 @@ def parse_run(event, session, chain_id, timestamp, tx_receipt=None):
     insert_log(log_doc, session=session)
     wf = find_workflow_by_ipfs(ipfs_hash, session=session)
     if wf:
-        new_runs = (wf.get("runs", 0) or 0) + 1
+        new_runs = wf.get("runs", 0) + 1
         update = {"runs": new_runs}
         executions = wf.get("executions")
         if executions is not None and new_runs >= executions:
@@ -77,7 +78,7 @@ def parse_cancelled(event, session, chain_id, timestamp):
     block_number = event["blockNumber"]
     tx_hash = event["transactionHash"].hex()
     log_doc = {
-        "event": "Cancelled",
+        "event": EventStatus.CANCELLED,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,

@@ -69,6 +69,11 @@ def find_workflow_by_ipfs(ipfs_hash, session=None):
     return db["workflows"].find_one({"ipfs_hash": ipfs_hash}, session=session)
 
 
+def find_workflow_without_meta(session=None):
+    """Find one workflow that hasn't had its metadata fetched yet"""
+    return db["workflows"].find_one({"has_meta": False}, session=session)
+
+
 def update_workflow(workflow_id, update_fields, session=None):
     """Update workflow fields by ID"""
     return db["workflows"].update_one(
