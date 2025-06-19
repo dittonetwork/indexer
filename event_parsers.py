@@ -1,7 +1,7 @@
 # event_parsers.py
 from db import insert_log, insert_workflow, find_workflow_by_ipfs, update_workflow
 from datetime import datetime
-from constants import EventStatus
+from config import EventStatus
 
 
 def parse_created(event, session, chain_id, timestamp):

@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from contextlib import contextmanager
 import os
-from constants import MONGO_URI, DB_NAME
+from config import MONGO_URI, DB_NAME
 
 # Initialize MongoDB client
 client = MongoClient(MONGO_URI)
