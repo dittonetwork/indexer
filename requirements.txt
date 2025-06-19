@@ -1,0 +1,6 @@
+pymongo
+web3
+python-dotenv
+requests
+tenacity 
+croniter
