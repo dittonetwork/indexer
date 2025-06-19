@@ -46,12 +46,24 @@ def get_next_cron_time(meta):
             "No simulationConfig list found in meta, skipping cron scheduling."
         )
         return None
+
     cron_found = 0
     next_time = None
     for cfg in sim_configs:
-        if cfg.get("type") == "cron" and "expression" in cfg:
+        if cfg.get("type") == "cron":
             cron_found += 1
-            cron_expr = cfg["expression"]
+            # Handle both old and new format
+            # TODO: Remove this once we have migrated all workflows to the new format
+            cron_expr = None
+            if "expression" in cfg:  # Old format
+                cron_expr = cfg["expression"]
+            elif "params" in cfg and "expression" in cfg["params"]:  # New format
+                cron_expr = cfg["params"]["expression"]
+
+            if not cron_expr:
+                logging.warning(f"Invalid cron config format: {cfg}")
+                continue
+
             now = datetime.utcnow()
             try:
                 candidate_time = croniter(cron_expr, now).get_next(datetime)
@@ -63,6 +75,7 @@ def get_next_cron_time(meta):
                     )
             except Exception as e:
                 logging.error(f"Invalid cron expression {cron_expr}: {e}")
+
     if cron_found == 0:
         logging.info("No valid cron config found in simulationConfig.")
     return next_time
