@@ -1,10 +1,9 @@
 # event_parsers.py
-from db import insert_log, insert_workflow, find_workflow_by_ipfs, update_workflow
 from datetime import datetime
 from config import EventStatus
 
 
-def parse_created(event, session, chain_id, timestamp):
+def parse_created(event, session, chain_id, timestamp, db):
     """
     - Store event in logs: event name, chain id, blocknumber, tx hash, ipfs hash, timestamp
     - If workflow with ipfs hash does not exist, create it with status 'has_meta': False, reference create event _id
@@ -21,9 +20,9 @@ def parse_created(event, session, chain_id, timestamp):
         "ipfs_hash": ipfs_hash,
         "timestamp": timestamp,
     }
-    log_result = insert_log(log_doc, session=session)
+    log_result = db.insert_log(log_doc, session=session)
     # Check for duplicate workflow
-    if not find_workflow_by_ipfs(ipfs_hash, session=session):
+    if not db.find_workflow_by_ipfs(ipfs_hash, session=session):
         workflow_doc = {
             "ipfs_hash": ipfs_hash,
             "create_event_id": log_result.inserted_id,
@@ -31,10 +30,10 @@ def parse_created(event, session, chain_id, timestamp):
             "runs": 0,
             "is_cancelled": False,
         }
-        insert_workflow(workflow_doc, session=session)
+        db.insert_workflow(workflow_doc, session=session)
 
 
-def parse_run(event, session, chain_id, timestamp, tx_receipt=None):
+def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
     """
     - Store event in logs
     - Find workflow by ipfs hash, increment 'runs'
@@ -58,18 +57,18 @@ def parse_run(event, session, chain_id, timestamp, tx_receipt=None):
             or tx_receipt.get("gasPrice"),
             "from": tx_receipt.get("from"),
         }
-    insert_log(log_doc, session=session)
-    wf = find_workflow_by_ipfs(ipfs_hash, session=session)
+    db.insert_log(log_doc, session=session)
+    wf = db.find_workflow_by_ipfs(ipfs_hash, session=session)
     if wf:
         new_runs = wf.get("runs", 0) + 1
         update = {"runs": new_runs}
         executions = wf.get("executions")
         if executions is not None and new_runs >= executions:
             update["is_cancelled"] = True
-        update_workflow(wf["_id"], update, session=session)
+        db.update_workflow(wf["_id"], update, session=session)
 
 
-def parse_cancelled(event, session, chain_id, timestamp):
+def parse_cancelled(event, session, chain_id, timestamp, db):
     """
     - Store event in logs
     - Mark workflow as 'is_cancelled': True, add cancel event _id
@@ -85,12 +84,12 @@ def parse_cancelled(event, session, chain_id, timestamp):
         "ipfs_hash": ipfs_hash,
         "timestamp": timestamp,
     }
-    log_result = insert_log(log_doc, session=session)
-    wf = find_workflow_by_ipfs(ipfs_hash, session=session)
+    log_result = db.insert_log(log_doc, session=session)
+    wf = db.find_workflow_by_ipfs(ipfs_hash, session=session)
     if wf:
         if wf.get("is_cancelled"):
             return
-        update_workflow(
+        db.update_workflow(
             wf["_id"],
             {"is_cancelled": True, "cancel_event_id": log_result.inserted_id},
             session=session,

@@ -1,32 +1,16 @@
-import os
 import time
 import logging
 import requests
-from db import (
-    find_workflow_by_ipfs,
-    update_workflow,
-    db_session,
-    find_workflow_without_meta,
-)
-from pymongo import MongoClient
-from dotenv import load_dotenv
 from threading import Thread
 from croniter import croniter
 from datetime import datetime
 from config import (
-    MONGO_URI,
-    DB_NAME,
     META_FILLER_SLEEP,
     IPFS_ENDPOINT,
     IPFS_CID_V0_PATTERN,
     IPFS_CID_V1_PATTERN,
 )
-
-load_dotenv()
-
-# Direct MongoDB access for workflow scan (abstract if needed)
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
+from db import Database
 
 
 def validate_ipfs_cid(ipfs_hash: str) -> bool:
@@ -130,12 +114,12 @@ def has_invalid_mongo_keys(obj, path=None):
     return None
 
 
-def meta_filler_worker():
+def meta_filler_worker(db: Database):
     while True:
         try:
-            with db_session() as session:
+            with db.db_session() as session:
                 # Find one workflow with has_meta: False
-                wf = find_workflow_without_meta(session=session)
+                wf = db.find_workflow_without_meta(session=session)
                 if not wf:
                     logging.info("No workflows without meta. Sleeping...")
                     time.sleep(META_FILLER_SLEEP)
@@ -161,7 +145,7 @@ def meta_filler_worker():
                     if next_cron_time:
                         update_fields["next_simulation_time"] = next_cron_time
 
-                    update_workflow(wf["_id"], update_fields, session=session)
+                    db.update_workflow(wf["_id"], update_fields, session=session)
                     logging.info(f"Meta updated for workflow {wf['_id']}")
                 else:
                     logging.warning(
@@ -177,9 +161,16 @@ def meta_filler_worker():
 
 
 class MetaFillerWorker(Thread):
+    def __init__(self, db: Database):
+        super().__init__()
+        self.db = db
+
     def run(self):
-        meta_filler_worker()
+        meta_filler_worker(self.db)
 
 
 if __name__ == "__main__":
-    meta_filler_worker()
+    from config import MONGO_URI, DB_NAME
+
+    db_instance = Database(MONGO_URI, DB_NAME)
+    meta_filler_worker(db_instance)

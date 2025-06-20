@@ -1,100 +1,102 @@
-from dotenv import load_dotenv
-
-load_dotenv()
-
 import json
-import os
 import logging
-from db import get_chain, insert_chain
+import os
 from chain_worker import ChainWorker
 from meta_filler import MetaFillerWorker
-
-logging.basicConfig(
-    level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s"
-)
-
-
-def load_config_chains():
-    config_path = os.getenv("CHAINS_CONFIG_PATH", "chains_config.json")
-    if os.path.exists(config_path):
-        with open(config_path) as f:
-            chains_data = json.load(f)
-            # If dict keyed by chain id, convert to list
-            if isinstance(chains_data, dict):
-                chains = []
-                for chain_id, chain_cfg in chains_data.items():
-                    # Try to get RPC_<chain_id> from env
-                    env_var = f"RPC_{chain_id}"
-                    rpc_url = os.getenv(env_var)
-                    if rpc_url:
-                        chain_cfg["rpc_url"] = rpc_url
-                        logging.info(f"Using {env_var} from .env for chain {chain_id}")
-                    else:
-                        logging.info(f"Using rpc_url from config for chain {chain_id}")
-                    chains.append(chain_cfg)
-                return chains
-            elif isinstance(chains_data, list):
-                return chains_data
-            else:
-                logging.error("Invalid chains config format.")
-                return []
-    else:
-        logging.error(f"No chains config found at {config_path}!")
-        return []
-
-
-def ensure_chains_in_db(config_chains):
-    for chain in config_chains:
-        chain_id = chain["global_chain_id"]
-        db_entry = get_chain(chain_id)
-        if db_entry is None:
-            # Insert with last_processed_block from config (default to 0 if not present)
-            last_processed = chain.get("last_processed_block", 0)
-            insert_chain(
-                {"global_chain_id": chain_id, "last_processed_block": last_processed}
-            )
-            logging.info(
-                f"Inserted chain {chain_id} into DB with last_processed_block={last_processed}"
-            )
-        else:
-            logging.info(f"Chain {chain_id} already present in DB")
-
-
-def get_worker_chain_docs(config_chains):
-    chain_docs = []
-    for chain in config_chains:
-        chain_id = chain["global_chain_id"]
-        db_entry = get_chain(chain_id)
-        if db_entry:
-            # Merge config and db state: always use config for all fields except last_processed_block
-            merged = dict(chain)
-            merged["last_processed_block"] = db_entry["last_processed_block"]
-            merged["_id"] = db_entry["_id"]
-            chain_docs.append(merged)
-        else:
-            logging.warning(f"Chain {chain_id} missing in DB after ensure step!")
-    return chain_docs
+from db import Database
+from config import MONGO_URI, DB_NAME
 
 
 def main():
-    config_chains = load_config_chains()
-    ensure_chains_in_db(config_chains)
-    chain_docs = get_worker_chain_docs(config_chains)
-    if not chain_docs:
-        logging.error("No chains to index. Exiting.")
+    """
+    Main function to initialize the database, load configuration,
+    and start all the worker threads.
+    """
+    # --- Configuration and DB Initialization ---
+    db = Database(MONGO_URI, DB_NAME)
+
+    # --- Load and Process Chains Configuration ---
+    try:
+        with open("chains_config.json") as f:
+            raw_config = json.load(f)
+    except FileNotFoundError:
+        logging.error("chains_config.json not found. Exiting.")
         return
-    workers = []
-    for chain_doc in chain_docs:
-        logging.info(f"Starting worker for chain {chain_doc['global_chain_id']}")
-        worker = ChainWorker(chain_doc)
+    except json.JSONDecodeError:
+        logging.error("chains_config.json is not a valid JSON file. Exiting.")
+        return
+
+    # The config can be a list of chain objects, or a dict where keys are chain IDs.
+    if isinstance(raw_config, dict):
+        chains_from_file = list(raw_config.values())
+    elif isinstance(raw_config, list):
+        chains_from_file = raw_config
+    else:
+        logging.error(
+            "chains_config.json must contain a list or a dictionary of chain configurations."
+        )
+        return
+
+    # Process chains config to allow for environment variable overrides for RPCs
+    chains_config = []
+    for chain in chains_from_file:
+        chain_id_str = str(chain.get("global_chain_id"))
+        env_var = f"RPC_{chain_id_str}"
+        rpc_url_from_env = os.getenv(env_var)
+        if rpc_url_from_env:
+            chain["rpc_url"] = rpc_url_from_env
+            logging.info(f"Using {env_var} from environment for chain {chain_id_str}.")
+        chains_config.append(chain)
+
+    # --- Database Synchronization for Chains ---
+    with db.db_session() as session:
+        existing_chains_in_db = {
+            chain["global_chain_id"] for chain in db.get_all_chains(session=session)
+        }
+
+        for chain in chains_config:
+            chain_id = chain["global_chain_id"]
+            if chain_id not in existing_chains_in_db:
+                # Add only essential info to DB, not the full config
+                db.insert_chain(
+                    {
+                        "global_chain_id": chain_id,
+                        "last_processed_block": chain.get("last_processed_block", 0),
+                    },
+                    session=session,
+                )
+                logging.info(f"Added new chain {chain_id} to database.")
+
+    # --- Worker Initialization ---
+    # Merge DB state with config for workers
+    all_chains_from_db = {c["global_chain_id"]: c for c in db.get_all_chains()}
+    worker_configs = []
+    for chain in chains_config:
+        chain_id = chain["global_chain_id"]
+        if chain_id in all_chains_from_db:
+            db_doc = all_chains_from_db[chain_id]
+            # Config from file is source of truth, except for last_processed_block
+            merged_config = chain.copy()
+            merged_config["last_processed_block"] = db_doc["last_processed_block"]
+            worker_configs.append(merged_config)
+
+    threads = []
+
+    # Start a worker for each chain
+    for chain_doc in worker_configs:
+        worker = ChainWorker(chain_doc, db)
         worker.start()
-        workers.append(worker)
-    # Start meta_filler worker in parallel
-    meta_filler = MetaFillerWorker()
+        threads.append(worker)
+
+    # Start the metadata filler worker
+    meta_filler = MetaFillerWorker(db)
     meta_filler.start()
-    workers.append(meta_filler)
-    for worker in workers:
-        worker.join()
+    threads.append(meta_filler)
+
+    # --- Keep Main Thread Alive ---
+    logging.info("All workers started. Indexer is running.")
+    for t in threads:
+        t.join()
 
 
 if __name__ == "__main__":

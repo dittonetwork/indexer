@@ -3,10 +3,6 @@ import threading
 import time
 import json
 from web3 import Web3
-from db import (
-    update_chain_last_processed,
-    db_session,
-)
 from eth_utils.abi import abi_to_signature, filter_abi_by_type
 from event_parsers import parse_created, parse_run, parse_cancelled
 from datetime import datetime, timezone
@@ -14,8 +10,9 @@ from config import EventType
 
 
 class ChainWorker(threading.Thread):
-    def __init__(self, chain_doc):
+    def __init__(self, chain_doc, db):
         super().__init__()
+        self.db = db
         self.chain_doc = chain_doc
         self.chain_id = chain_doc["global_chain_id"]
         self.rpc_url = chain_doc["rpc_url"]
@@ -130,23 +127,34 @@ class ChainWorker(threading.Thread):
                     logging.error(f"[Chain {self.chain_id}] {name} decode error: {e}")
 
             # Persist atomically
-            with db_session() as session:
+            with self.db.db_session() as session:
                 for name, evt, timestamp, tx_receipt in decoded_events:
                     try:
                         if name == EventType.CREATED.value:
-                            parse_created(evt, session, self.chain_id, timestamp)
+                            parse_created(
+                                evt, session, self.chain_id, timestamp, self.db
+                            )
                         elif name == EventType.RUN.value:
                             parse_run(
-                                evt, session, self.chain_id, timestamp, tx_receipt
+                                evt,
+                                session,
+                                self.chain_id,
+                                timestamp,
+                                self.db,
+                                tx_receipt=tx_receipt,
                             )
                         else:  # Cancelled
-                            parse_cancelled(evt, session, self.chain_id, timestamp)
+                            parse_cancelled(
+                                evt, session, self.chain_id, timestamp, self.db
+                            )
                     except Exception as e:
                         logging.error(
                             f"[Chain {self.chain_id}] {name} parse error: {e}"
                         )
 
-                update_chain_last_processed(self.chain_id, batch_end, session=session)
+                self.db.update_chain_last_processed(
+                    self.chain_id, batch_end, session=session
+                )
 
             # ready for next batch
             self.last_processed = batch_end
