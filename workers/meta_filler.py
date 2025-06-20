@@ -10,7 +10,7 @@ from config import (
     IPFS_CID_V0_PATTERN,
     IPFS_CID_V1_PATTERN,
 )
-from db import Database
+from core.database import Database
 
 
 def validate_ipfs_cid(ipfs_hash: str) -> bool:

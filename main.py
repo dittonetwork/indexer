@@ -1,9 +1,9 @@
 import json
 import logging
 import os
-from chain_worker import ChainWorker
-from meta_filler import MetaFillerWorker
-from db import Database
+from workers.chain_worker import ChainWorker
+from workers.meta_filler import MetaFillerWorker
+from core.database import Database
 from config import MONGO_URI, DB_NAME
 
 

@@ -4,7 +4,7 @@ import time
 import json
 from web3 import Web3
 from eth_utils.abi import abi_to_signature, filter_abi_by_type
-from event_parsers import parse_created, parse_run, parse_cancelled
+from events.parsers import parse_created, parse_run, parse_cancelled
 from datetime import datetime, timezone
 from config import EventType
 
