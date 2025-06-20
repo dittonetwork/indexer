@@ -10,6 +10,3 @@ services:
     volumes:
       - .:/app
     command: ["python", "main.py"]
-
-volumes:
-  mongo_data: 
