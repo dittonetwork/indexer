@@ -1,13 +1,19 @@
 import logging
 from pymongo import MongoClient
 from contextlib import contextmanager
+from pymongo.errors import ConnectionFailure, OperationFailure
+from bson.objectid import ObjectId
 
 
 class Database:
-    def __init__(self, mongo_uri, db_name):
+    def __init__(self, mongo_uri, db_name, fresh_start=False):
         self.client = MongoClient(mongo_uri)
         self.db = self.client[db_name]
         logging.info("MongoDB connection initialized.")
+        if fresh_start:
+            self.db.chains.delete_many({})
+            self.db.logs.delete_many({})
+            self.db.workflows.delete_many({})
 
     @contextmanager
     def db_session(self):
@@ -60,6 +66,13 @@ class Database:
 
     def update_workflow(self, workflow_id, update_fields, session=None):
         """Update workflow fields by ID"""
+        # Ensure workflow_id is an ObjectId to prevent type issues
+        if not isinstance(workflow_id, ObjectId):
+            logging.warning(
+                f"Casting workflow_id to ObjectId. Original type: {type(workflow_id)}"
+            )
+            workflow_id = ObjectId(workflow_id)
+
         return self.db.workflows.update_one(
             {"_id": workflow_id}, {"$set": update_fields}, session=session
         )

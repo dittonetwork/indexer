@@ -1,9 +1,11 @@
 # event_parsers.py
 from datetime import datetime
-from config import EventStatus
+from config import EventType
+from core.database import Database
+from bson.objectid import ObjectId
 
 
-def parse_created(event, session, chain_id, timestamp, db):
+def parse_created(event, session, chain_id, timestamp, db: Database):
     """
     - Store event in logs: event name, chain id, blocknumber, tx hash, ipfs hash, timestamp
     - If workflow with ipfs hash does not exist, create it with status 'has_meta': False, reference create event _id
@@ -13,7 +15,7 @@ def parse_created(event, session, chain_id, timestamp, db):
     block_number = event["blockNumber"]
     tx_hash = event["transactionHash"].hex()
     log_doc = {
-        "event": EventStatus.CREATED,
+        "event": EventType.CREATED,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,
@@ -25,7 +27,7 @@ def parse_created(event, session, chain_id, timestamp, db):
     if not db.find_workflow_by_ipfs(ipfs_hash, session=session):
         workflow_doc = {
             "ipfs_hash": ipfs_hash,
-            "create_event_id": log_result.inserted_id,
+            "create_event_id": ObjectId(log_result.inserted_id),
             "has_meta": False,
             "runs": 0,
             "is_cancelled": False,
@@ -43,7 +45,7 @@ def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
     block_number = event["blockNumber"]
     tx_hash = event["transactionHash"].hex()
     log_doc = {
-        "event": EventStatus.RUN,
+        "event": EventType.RUN,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,
@@ -77,7 +79,7 @@ def parse_cancelled(event, session, chain_id, timestamp, db):
     block_number = event["blockNumber"]
     tx_hash = event["transactionHash"].hex()
     log_doc = {
-        "event": EventStatus.CANCELLED,
+        "event": EventType.CANCELLED,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,
