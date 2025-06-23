@@ -111,7 +111,6 @@ class ChainWorker(threading.Thread):
             decoded_events.append((name, decoded, timestamp, tx_receipt))
 
         with self.db.db_session() as session:
-            batch_has_errors = False
             for name, evt, timestamp, tx_receipt in decoded_events:
                 try:
                     if name == EventType.CREATED.value:
@@ -126,10 +125,7 @@ class ChainWorker(threading.Thread):
                     logging.error(
                         f"[Chain {self.chain_id}] Parse error for tx {evt['transactionHash'].hex()}: {e}"
                     )
-                    batch_has_errors = True
-
-            if batch_has_errors:
-                raise Exception("Batch has parsing errors.")
+                    raise Exception("Batch has parsing errors.")
 
             self.db.update_chain_last_processed(
                 self.chain_id, batch_end, session=session
