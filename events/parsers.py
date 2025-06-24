@@ -67,7 +67,7 @@ def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
         executions = wf.get("executions")
         if executions is not None and new_runs >= executions:
             update["is_cancelled"] = True
-        db.update_workflow(wf["_id"], update, session=session)
+        db.update_workflow(wf["ipfs_hash"], update, session=session)
 
 
 def parse_cancelled(event, session, chain_id, timestamp, db):
@@ -92,7 +92,7 @@ def parse_cancelled(event, session, chain_id, timestamp, db):
         if wf.get("is_cancelled"):
             return
         db.update_workflow(
-            wf["_id"],
+            wf["ipfs_hash"],
             {"is_cancelled": True, "cancel_event_id": log_result.inserted_id},
             session=session,
         )

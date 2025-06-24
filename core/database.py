@@ -14,6 +14,14 @@ class Database:
             self.db.chains.delete_many({})
             self.db.logs.delete_many({})
             self.db.workflows.delete_many({})
+        # Ensure text index on ipfs_hash in workflows
+        try:
+            self.db.workflows.create_index(
+                [("ipfs_hash", "text")], name="ipfs_hash_text_index", background=True
+            )
+            logging.info("Ensured text index on workflows.ipfs_hash.")
+        except Exception as e:
+            logging.error(f"Failed to create text index on workflows.ipfs_hash: {e}")
 
     @contextmanager
     def db_session(self):
@@ -64,15 +72,8 @@ class Database:
         """Find one workflow that hasn't had its metadata fetched yet"""
         return self.db.workflows.find_one({"has_meta": False}, session=session)
 
-    def update_workflow(self, workflow_id, update_fields, session=None):
-        """Update workflow fields by ID"""
-        # Ensure workflow_id is an ObjectId to prevent type issues
-        if not isinstance(workflow_id, ObjectId):
-            logging.warning(
-                f"Casting workflow_id to ObjectId. Original type: {type(workflow_id)}"
-            )
-            workflow_id = ObjectId(workflow_id)
-
+    def update_workflow(self, workflow_ipfs_hash, update_fields, session=None):
+        """Update workflow fields by IPFS hash"""
         return self.db.workflows.update_one(
-            {"_id": workflow_id}, {"$set": update_fields}, session=session
+            {"ipfs_hash": workflow_ipfs_hash}, {"$set": update_fields}, session=session
         )
