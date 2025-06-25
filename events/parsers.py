@@ -13,7 +13,7 @@ def parse_created(event, session, chain_id, timestamp, db: Database):
     """
     ipfs_hash = event["args"]["ipfsHash"]
     block_number = event["blockNumber"]
-    tx_hash = event["transactionHash"].hex()
+    tx_hash = f"0x{event['transactionHash'].hex()}"
     log_doc = {
         "event": EventType.CREATED,
         "chain_id": chain_id,
@@ -39,11 +39,11 @@ def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
     """
     - Store event in logs
     - Find workflow by ipfs hash, increment 'runs'
-    - If 'executions' exists and runs >= executions, set 'is_cancelled': True
+    - If 'count' exists in meta.workflow and runs >= count, set 'is_cancelled': True
     """
     ipfs_hash = event["args"]["ipfsHash"]
     block_number = event["blockNumber"]
-    tx_hash = event["transactionHash"].hex()
+    tx_hash = f"0x{event['transactionHash'].hex()}"
     log_doc = {
         "event": EventType.RUN,
         "chain_id": chain_id,
@@ -64,8 +64,11 @@ def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
     if wf:
         new_runs = wf.get("runs", 0) + 1
         update = {"runs": new_runs}
-        executions = wf.get("executions")
-        if executions is not None and new_runs >= executions:
+        # Check for execution count in the nested meta structure
+        meta = wf.get("meta", {})
+        workflow_meta = meta.get("workflow", {})
+        count = workflow_meta.get("count")
+        if count is not None and new_runs >= count:
             update["is_cancelled"] = True
         db.update_workflow(wf["ipfs_hash"], update, session=session)
 
@@ -77,7 +80,7 @@ def parse_cancelled(event, session, chain_id, timestamp, db):
     """
     ipfs_hash = event["args"]["ipfsHash"]
     block_number = event["blockNumber"]
-    tx_hash = event["transactionHash"].hex()
+    tx_hash = f"0x{event['transactionHash'].hex()}"
     log_doc = {
         "event": EventType.CANCELLED,
         "chain_id": chain_id,
