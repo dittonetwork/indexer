@@ -4,3 +4,4 @@ python-dotenv==1.0.0
 requests==2.31.0
 tenacity==8.2.3
 croniter==2.0.1
+setuptools==69.0.0
