@@ -98,6 +98,18 @@ def meta_filler_worker(db: Database):
 
                 if meta is not None:
                     update_fields = {"meta": meta, "has_meta": True}
+
+                    # Check if workflow should be cancelled based on execution count
+                    current_runs = wf.get("runs", 0)
+                    workflow_meta = meta.get("workflow", {})
+                    count = workflow_meta.get("count")
+
+                    if count is not None and current_runs >= count:
+                        update_fields["is_cancelled"] = True
+                        logging.info(
+                            f"Workflow {wf['ipfs_hash']} marked as cancelled: runs ({current_runs}) >= count ({count})"
+                        )
+
                     db.update_workflow(wf["ipfs_hash"], update_fields, session=session)
                     logging.info(f"Meta updated for workflow {wf['ipfs_hash']}")
                 else:

@@ -2,7 +2,7 @@
     "11155111": {
         "rpc_url": "localhost",
         "global_chain_id": 11155111,
-        "last_processed_block": 8619397,
+        "last_processed_block": 8634536,
         "batch_size": 100,
         "block_delay": 2,
         "loop_sleep_duration": 10,
