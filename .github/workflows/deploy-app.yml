@@ -1,0 +1,81 @@
+name: Deploy indexer
+
+env:
+  ECR_REGISTRY: 847647377987.dkr.ecr.eu-central-1.amazonaws.com/epsilon
+  SERVICE_NAME: indexer
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Selected version'
+        type: 'number'
+        required: true
+
+      environment:
+        description: 'Environment'
+        required: true
+        type: environment
+
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Validate images in ECR
+        run: |          
+          version="${{ inputs.version }}"
+          ref_name="${{ github.ref_name }}"
+          ecr_registry="${{ env.ECR_REGISTRY }}"
+          if aws ecr describe-images --repository-name "epsilon/${{ env.SERVICE_NAME }}" --image-ids imageTag="${ref_name}_${version}" > /dev/null 2>&1; then
+            echo "Image $image_tag exists."
+          else
+            echo "Image $image_tag not found. Stopping deployment."
+            exit 1
+          fi
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: prepare
+    environment: ${{ inputs.environment }}
+    steps:
+    - name: Clone
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Update KubeConfig
+      run: |
+        aws eks update-kubeconfig --name ${{ secrets.CLUSTER_NAME }} --region=${{ vars.AWS_REGION }}
+
+    - name: Deploy services
+      env:
+        FILE_ENV: ${{ secrets.ENV_FILE }}
+      run: |
+          version="${{ inputs.version }}"
+          version="${{ inputs.version }}"
+          ref_name="${{ github.ref_name }}"
+          environment=${{ inputs.environment }}
+          echo "${FILE_ENV}" > .env
+          export $(grep -v '^#' .env | xargs)
+          cat .devops/helm/env.yaml | envsubst >compiled.env.yaml
+          helm upgrade --install -n epsilon -f compiled.env.yaml \
+            -f .devops/helm/values-$environment.yaml \
+            --set image.tag="${ref_name}_${version}" ${{ env.SERVICE_NAME }} \
+            .devops/helm/

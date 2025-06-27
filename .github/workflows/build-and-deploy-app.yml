@@ -1,0 +1,97 @@
+name: Buiild image and deploy indexer
+
+env:
+  ECR_REGISTRY: 847647377987.dkr.ecr.eu-central-1.amazonaws.com/epsilon
+  SERVICE_NAME: indexer
+  AWS_REGION: eu-central-1
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        type: environment
+
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get current version to branch
+        id: version
+        run: |
+          version=$(./.devops/get_latest_build.sh ${{ github.ref_name }} ${{ env.SERVICE_NAME }})
+          echo "version=$version" >> $GITHUB_OUTPUT
+  build:
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    name: Build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          IMAGE_NAME: ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.ref_name }}_${{ needs.prepare.outputs.version }}
+        run: |
+          docker build -f ./Dockerfile --tag $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    environment: ${{ inputs.environment }}
+    steps:
+    - name: Clone
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Update KubeConfig
+      run: |
+        aws eks update-kubeconfig --name ${{ secrets.CLUSTER_NAME }} --region=${{ vars.AWS_REGION }}
+
+    - name: Deploy services
+      env:
+        FILE_ENV: ${{ secrets.ENV_FILE }}
+        VERSION: ${{ needs.prepare.outputs.version }}
+      run: |
+          version="${{ inputs.version }}"
+          version="${{ inputs.version }}"
+          ref_name="${{ github.ref_name }}"
+          environment=${{ inputs.environment }}
+          echo "${FILE_ENV}" > .env
+          export $(grep -v '^#' .env | xargs)
+          cat .devops/helm/env.yaml | envsubst >compiled.env.yaml
+          helm upgrade --install -n epsilon -f compiled.env.yaml \
+            -f .devops/helm/values-$environment.yaml \
+            --set image.tag="${ref_name}_${VERSION}" ${{ env.SERVICE_NAME }} \
+            .devops/helm/
