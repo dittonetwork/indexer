@@ -122,9 +122,21 @@
                 "internalType": "string",
                 "name": "ipfsHash",
                 "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "jobId",
+                "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
             }
         ],
-        "name": "Run",
+        "name": "RunWithMetadata",
         "type": "event"
     },
     {
@@ -185,9 +197,19 @@
                 "internalType": "string",
                 "name": "ipfsHash",
                 "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "jobId",
+                "type": "string"
+            },
+            {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
             }
         ],
-        "name": "markRun",
+        "name": "markRunWithMetadata",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
