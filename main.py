@@ -13,7 +13,7 @@ def main():
     and start all the worker threads.
     """
     # --- Configuration and DB Initialization ---
-    db = Database(MONGO_URI, DB_NAME, fresh_start=False)
+    db = Database(MONGO_URI, DB_NAME, fresh_start=True)
 
     # --- Load and Process Chains Configuration ---
     try:

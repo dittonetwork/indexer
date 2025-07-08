@@ -29,7 +29,7 @@ IPFS_CID_V1_PATTERN = re.compile(r"^bafy[a-zA-Z0-9]{55}$")
 
 class EventType(str, Enum):
     CREATED = "Created"
-    RUN = "Run"
+    RUN_WITH_METADATA = "RunWithMetadata"
     CANCELLED = "Cancelled"
 
     @classmethod

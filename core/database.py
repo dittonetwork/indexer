@@ -77,3 +77,16 @@ class Database:
         return self.db.workflows.update_one(
             {"ipfs_hash": workflow_ipfs_hash}, {"$set": update_fields}, session=session
         )
+
+    def has_run_event_with_nonce(self, workflow_ipfs_hash, nonce, session=None):
+        """Check if a run event with the same ipfs_hash and nonce already exists in logs"""
+        result = self.db.logs.find_one(
+            {
+                "ipfs_hash": workflow_ipfs_hash,
+                "nonce": nonce,
+                "event": "Run",
+            },
+            {"_id": 1},
+            session=session,
+        )
+        return result is not None
