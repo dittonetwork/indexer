@@ -66,12 +66,9 @@ def parse_run_with_metadata(event, session, chain_id, timestamp, db, tx_receipt=
             "from": tx_receipt.get("from"),
         }
 
-    # Always store the event
-    db.insert_log(log_doc, session=session)
-
     wf = db.find_workflow_by_ipfs(ipfs_hash, session=session)
     if wf:
-        # Check if we already have a run event with this nonce
+        # Check if we already have a run event with this nonce BEFORE storing
         nonce_already_exists = db.has_run_event_with_nonce(
             ipfs_hash, nonce, session=session
         )
@@ -90,7 +87,10 @@ def parse_run_with_metadata(event, session, chain_id, timestamp, db, tx_receipt=
                 update["is_cancelled"] = True
 
             db.update_workflow(wf["ipfs_hash"], update, session=session)
-        # If nonce already exists, we still stored the event but didn't increment runs
+        # If nonce already exists, we still store the event but don't increment runs
+
+    # Always store the event (regardless of whether nonce was duplicate)
+    db.insert_log(log_doc, session=session)
 
 
 def parse_cancelled(event, session, chain_id, timestamp, db):
