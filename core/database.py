@@ -51,6 +51,14 @@ class Database:
             session=session,
         )
 
+    def update_chain_sync_status(self, chain_id, is_synced, session=None):
+        """Update the sync status for a chain"""
+        return self.db.chains.update_one(
+            {"global_chain_id": chain_id},
+            {"$set": {"is_synced": is_synced}},
+            session=session,
+        )
+
     def get_all_chains(self, session=None):
         return list(self.db.chains.find({}, session=session))
 

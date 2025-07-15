@@ -6,6 +6,7 @@
         "batch_size": 100,
         "block_delay": 2,
         "loop_sleep_duration": 10,
+        "sync_threshold_blocks": 10,
         "registry_contract_address": "0x5CE5E78588F4dC8556E2c607134e8b76567AECE6",
         "parse_retry_delay_seconds": 5
     }

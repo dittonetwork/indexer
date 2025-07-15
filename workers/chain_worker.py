@@ -23,6 +23,7 @@ class ChainWorker(threading.Thread):
         self.sleep_duration = chain_doc["loop_sleep_duration"]
         self.registry_address = chain_doc["registry_contract_address"]
         self.parse_retry_delay = chain_doc.get("parse_retry_delay_seconds", 10)
+        self.sync_threshold_blocks = chain_doc.get("sync_threshold_blocks", 5)
         self.web3 = Web3(Web3.HTTPProvider(self.rpc_url))
         # Load ABI for registry contract
         with open("registry_abi.json") as f:
@@ -137,8 +138,33 @@ class ChainWorker(threading.Thread):
         """
         Walks through unprocessed blocks in batches, with a retry mechanism.
         """
-        latest_block = self.web3.eth.block_number - self.block_delay
+        current_block = self.web3.eth.block_number
+        latest_block = current_block - self.block_delay
         start_block = self.last_processed + 1
+
+        # Check if chain is synced using configurable threshold
+        blocks_behind = current_block - self.last_processed
+        is_synced = blocks_behind < self.sync_threshold_blocks
+
+        # Update sync status in database
+        with self.db.db_session() as session:
+            chain = self.db.get_chain(self.chain_id, session=session)
+            if chain:
+                current_sync_status = chain.get("is_synced", False)
+                if is_synced != current_sync_status:
+                    self.db.update_chain_sync_status(
+                        self.chain_id, is_synced, session=session
+                    )
+                    if is_synced:
+                        logging.info(
+                            f"[Chain {self.chain_id}] Marked as synced (behind by {blocks_behind} blocks, threshold: {self.sync_threshold_blocks})"
+                        )
+                    else:
+                        logging.info(
+                            f"[Chain {self.chain_id}] Marked as not synced (behind by {blocks_behind} blocks, threshold: {self.sync_threshold_blocks})"
+                        )
+
+        # If no new blocks to process, return early
         if latest_block < start_block:
             return
 
