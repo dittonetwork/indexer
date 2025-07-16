@@ -78,7 +78,28 @@ jobs:
     - name: Update KubeConfig
       run: |
         aws eks update-kubeconfig --name ${{ secrets.CLUSTER_NAME }} --region=${{ vars.AWS_REGION }}
-
+    - name: Create Kubernetes Secret from GitHub Secrets list
+      env:
+        SECRET_NAMESPACE: epsilon
+        SECRET_NAME: indexer-env
+        SECRET_KEYS: MONGO_URI,META_FILLER_SLEEP,DB_NAME,RPC_11155111,IPFS_CONNECTOR_ENDPOINT
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        META_FILLER_SLEEP: ${{ secrets.META_FILLER_SLEEP }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        RPC_11155111: ${{ secrets.RPC_11155111 }}
+        IPFS_CONNECTOR_ENDPOINT: ${{ secrets.IPFS_CONNECTOR_ENDPOINT }}
+      run: |
+        IFS=',' read -ra KEYS <<< "$SECRET_KEYS"
+        CMD="kubectl create secret generic $SECRET_NAME -n $SECRET_NAMESPACE --dry-run=client -o yaml"
+        for key in "${KEYS[@]}"; do
+          value="${!key}"
+          if [[ -z "$value" ]]; then
+            echo "Warning: Secret $key is empty or not set. Skipping..."
+            continue
+          fi
+          CMD+=" --from-literal=$key=$value"
+        done
+        eval "$CMD" | kubectl apply -f -
     - name: Deploy services
       env:
         FILE_ENV: ${{ secrets.ENV_FILE }}
@@ -88,10 +109,7 @@ jobs:
           version="${{ inputs.version }}"
           ref_name="${{ github.ref_name }}"
           environment=${{ inputs.environment }}
-          echo "${FILE_ENV}" > .env
-          export $(grep -v '^#' .env | xargs)
-          cat .devops/helm/env.yaml | envsubst >compiled.env.yaml
-          helm upgrade --install -n epsilon -f compiled.env.yaml \
+          helm upgrade --install -n epsilon \
             -f .devops/helm/values-$environment.yaml \
             --set image.tag="${ref_name}_${VERSION}" ${{ env.SERVICE_NAME }} \
             .devops/helm/
