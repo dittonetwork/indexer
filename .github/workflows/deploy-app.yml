@@ -73,18 +73,18 @@ jobs:
         DB_NAME: ${{ secrets.DB_NAME }}
         RPC_11155111: ${{ secrets.RPC_11155111 }}
         IPFS_CONNECTOR_ENDPOINT: ${{ secrets.IPFS_CONNECTOR_ENDPOINT }}
-      run: |
+      run: |        
         IFS=',' read -ra KEYS <<< "$SECRET_KEYS"
-        CMD="kubectl create secret generic $SECRET_NAME -n $SECRET_NAMESPACE --dry-run=client -o yaml"
+        args=(create secret generic "$SECRET_NAME" -n "$SECRET_NAMESPACE" --dry-run=client -o yaml)
         for key in "${KEYS[@]}"; do
           value="${!key}"
           if [[ -z "$value" ]]; then
             echo "Warning: Secret $key is empty or not set. Skipping..."
             continue
           fi
-          CMD+=" --from-literal=$key=$value"
+          args+=(--from-literal="$key=$value")
         done
-        eval "$CMD" | kubectl apply -f -
+        kubectl "${args[@]}" | kubectl apply -f -
     - name: Deploy services
       env:
         FILE_ENV: ${{ secrets.ENV_FILE }}
