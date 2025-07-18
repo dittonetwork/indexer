@@ -4,7 +4,12 @@ import time
 import json
 from web3 import Web3
 from eth_utils.abi import abi_to_signature, filter_abi_by_type
-from events.parsers import parse_created, parse_run_with_metadata, parse_cancelled
+from events.parsers import (
+    parse_created,
+    parse_run,
+    parse_run_with_metadata,
+    parse_cancelled,
+)
 from datetime import datetime, timezone
 from config import EventType
 from functools import cache
@@ -104,7 +109,7 @@ class ChainWorker(threading.Thread):
                 decoded = decoder.processLog(raw)
 
             tx_receipt = None
-            if name == EventType.RUN_WITH_METADATA.value:
+            if name == EventType.RUN.value or name == EventType.RUN_WITH_METADATA.value:
                 tx_receipt = self.web3.eth.get_transaction_receipt(
                     raw["transactionHash"]
                 )
@@ -116,6 +121,10 @@ class ChainWorker(threading.Thread):
                 try:
                     if name == EventType.CREATED.value:
                         parse_created(evt, session, self.chain_id, timestamp, self.db)
+                    elif name == EventType.RUN.value:
+                        parse_run(
+                            evt, session, self.chain_id, timestamp, self.db, tx_receipt
+                        )
                     elif name == EventType.RUN_WITH_METADATA.value:
                         parse_run_with_metadata(
                             evt, session, self.chain_id, timestamp, self.db, tx_receipt
