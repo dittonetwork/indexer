@@ -17,6 +17,9 @@ DB_NAME = os.getenv("DB_NAME", "indexer")
 
 # Meta filler configuration
 META_FILLER_SLEEP = int(os.getenv("META_FILLER_SLEEP", 60))  # seconds
+META_FILLER_BATCH_SIZE = int(
+    os.getenv("META_FILLER_BATCH_SIZE", 10)
+)  # workflows per batch
 DEFAULT_IPFS_ENDPOINT = "https://ipfs.io/ipfs/"
 IPFS_ENDPOINT = os.getenv("IPFS_CONNECTOR_ENDPOINT", DEFAULT_IPFS_ENDPOINT)
 
