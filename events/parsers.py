@@ -49,7 +49,7 @@ def parse_run_with_metadata(event, session, chain_id, timestamp, db, tx_receipt=
     tx_hash = f"0x{event['transactionHash'].hex()}"
 
     log_doc = {
-        "event": "Run",
+        "event": EventType.RUN,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,
@@ -104,7 +104,7 @@ def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
     tx_hash = f"0x{event['transactionHash'].hex()}"
 
     log_doc = {
-        "event": "Run",
+        "event": EventType.RUN,
         "chain_id": chain_id,
         "blocknumber": block_number,
         "transaction_hash": tx_hash,
