@@ -13,7 +13,7 @@ def main():
     and start all the worker threads.
     """
     # --- Configuration and DB Initialization ---
-    db = Database(MONGO_URI, DB_NAME, fresh_start=True)
+    db = Database(MONGO_URI, DB_NAME, fresh_start=False)
 
     # --- Load and Process Chains Configuration ---
     try:
@@ -62,6 +62,7 @@ def main():
                     {
                         "global_chain_id": chain_id,
                         "last_processed_block": chain.get("last_processed_block", 0),
+                        "is_synced": False,
                     },
                     session=session,
                 )
