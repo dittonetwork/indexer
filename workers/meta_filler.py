@@ -6,6 +6,7 @@ from croniter import croniter
 from datetime import datetime
 from config import (
     META_FILLER_SLEEP,
+    META_FILLER_BATCH_SIZE,
     IPFS_ENDPOINT,
     IPFS_CID_V0_PATTERN,
     IPFS_CID_V1_PATTERN,
@@ -75,53 +76,108 @@ def meta_filler_worker(db: Database):
     while True:
         try:
             with db.db_session() as session:
-                # Find one workflow with has_meta: False
-                wf = db.find_workflow_without_meta(session=session)
-                if not wf:
-                    logging.info("No workflows without meta. Sleeping...")
+                # Find multiple workflows with has_meta: False (batch processing)
+                workflows = db.find_workflows_without_meta_batch(
+                    limit=META_FILLER_BATCH_SIZE,
+                    skip_recent_failures=True,
+                    session=session,
+                )
+
+                if not workflows:
+                    logging.info(
+                        "No workflows without meta available for processing. Sleeping..."
+                    )
                     time.sleep(META_FILLER_SLEEP)
                     continue
 
-                ipfs_hash = wf["ipfs_hash"]
                 logging.info(
-                    f"Fetching meta for workflow {wf['_id']} (ipfs: {ipfs_hash})"
+                    f"Processing batch of {len(workflows)} workflows for meta fetch"
                 )
-                meta = fetch_ipfs_meta(ipfs_hash)
 
-                # Check for invalid MongoDB keys
-                invalid_path = has_invalid_mongo_keys(meta)
-                if invalid_path:
-                    logging.error(
-                        f"Meta for workflow {wf['_id']} contains invalid MongoDB key at: {'.'.join(invalid_path)}. Skipping update."
-                    )
-                    continue
+                successful_count = 0
+                failed_count = 0
 
-                if meta is not None:
-                    update_fields = {"meta": meta, "has_meta": True}
-
-                    # Check if workflow should be cancelled based on execution count
-                    current_runs = wf.get("runs", 0)
-                    workflow_meta = meta.get("workflow", {})
-                    count = workflow_meta.get("count")
-
-                    if count is not None and current_runs >= count:
-                        update_fields["is_cancelled"] = True
+                # Process each workflow in the batch
+                for wf in workflows:
+                    try:
+                        ipfs_hash = wf["ipfs_hash"]
                         logging.info(
-                            f"Workflow {wf['ipfs_hash']} marked as cancelled: runs ({current_runs}) >= count ({count})"
+                            f"Fetching meta for workflow {wf['_id']} (ipfs: {ipfs_hash})"
                         )
 
-                    db.update_workflow(wf["ipfs_hash"], update_fields, session=session)
-                    logging.info(f"Meta updated for workflow {wf['ipfs_hash']}")
-                else:
-                    logging.warning(
-                        f"Meta fetch failed for workflow {wf['ipfs_hash']}, will retry later."
-                    )
+                        meta = fetch_ipfs_meta(ipfs_hash)
+
+                        if meta is None:
+                            # Mark as failed and continue to next workflow
+                            db.mark_workflow_meta_failure(
+                                wf["ipfs_hash"], session=session
+                            )
+                            logging.warning(
+                                f"Meta fetch failed for workflow {wf['ipfs_hash']}, marked for retry later."
+                            )
+                            failed_count += 1
+                            continue
+
+                        # Check for invalid MongoDB keys
+                        invalid_path = has_invalid_mongo_keys(meta)
+                        if invalid_path:
+                            logging.error(
+                                f"Meta for workflow {wf['_id']} contains invalid MongoDB key at: {'.'.join(invalid_path)}. Marking as failed."
+                            )
+                            db.mark_workflow_meta_failure(
+                                wf["ipfs_hash"], session=session
+                            )
+                            failed_count += 1
+                            continue
+
+                        # Meta is valid, update the workflow
+                        update_fields = {"meta": meta, "has_meta": True}
+
+                        # Check if workflow should be cancelled based on execution count
+                        current_runs = wf.get("runs", 0)
+                        workflow_meta = meta.get("workflow", {})
+                        count = workflow_meta.get("count")
+
+                        if count is not None and current_runs >= count:
+                            update_fields["is_cancelled"] = True
+                            logging.info(
+                                f"Workflow {wf['ipfs_hash']} marked as cancelled: runs ({current_runs}) >= count ({count})"
+                            )
+
+                        db.update_workflow(
+                            wf["ipfs_hash"], update_fields, session=session
+                        )
+                        # Clear any previous failure tracking on success
+                        db.clear_workflow_meta_failures(
+                            wf["ipfs_hash"], session=session
+                        )
+                        logging.info(f"Meta updated for workflow {wf['ipfs_hash']}")
+                        successful_count += 1
+
+                    except Exception as workflow_error:
+                        # Handle individual workflow errors without stopping the batch
+                        logging.error(
+                            f"Error processing workflow {wf.get('ipfs_hash', 'unknown')}: {workflow_error}"
+                        )
+                        try:
+                            db.mark_workflow_meta_failure(
+                                wf["ipfs_hash"], session=session
+                            )
+                        except Exception:
+                            pass  # Don't let failure marking break the batch
+                        failed_count += 1
+                        continue
+
+                logging.info(
+                    f"Batch completed: {successful_count} successful, {failed_count} failed"
+                )
+
         except Exception as e:
-            logging.error(f"Error in meta filler worker: {str(e)}")
+            logging.error(f"Error in meta filler worker batch: {str(e)}")
             time.sleep(5)  # Sleep longer on errors
             continue
 
-        # Short sleep to avoid hammering in case of repeated errors
+        # Short sleep to avoid hammering
         time.sleep(2)
 
 

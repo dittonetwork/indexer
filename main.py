@@ -62,6 +62,7 @@ def main():
                     {
                         "global_chain_id": chain_id,
                         "last_processed_block": chain.get("last_processed_block", 0),
+                        "is_synced": False,
                     },
                     session=session,
                 )
