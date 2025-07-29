@@ -25,7 +25,7 @@ The following environment variables can be configured:
 - `META_FILLER_BATCH_SIZE`: Batch size for meta filler worker (default: `10`)
 - `IPFS_CONNECTOR_ENDPOINT`: IPFS endpoint for metadata fetching (default: `https://ipfs.io/ipfs/`)
 - `RPC_{CHAIN_ID}`: RPC URL override for specific chain (e.g., `RPC_11155111`)
-- `LAST_PROCESSED_BLOCK_{CHAIN_ID}`: **Required** starting block for specific chain (e.g., `LAST_PROCESSED_BLOCK_11155111`)
+- `LAST_PROCESSED_BLOCK_{CHAIN_ID}`: Starting block for specific chain (e.g., `LAST_PROCESSED_BLOCK_11155111`)
 
 ## Docker Quick Start
 
@@ -60,4 +60,4 @@ You can run both the indexer and a fresh MongoDB instance using Docker Compose. 
 - The default MongoDB URI in `.env.example` is set for Docker Compose networking (`mongo:27017`).
 - Configuration files are environment-specific: `chains_config.{env}.json` (e.g., `chains_config.local.json`, `chains_config.dev.json`, `chains_config.prod.json`).
 - The `last_processed_block` is now managed via environment variables instead of the config file for better deployment flexibility.
-- **Important**: Each chain must have its `LAST_PROCESSED_BLOCK_{CHAIN_ID}` environment variable set. There is no default value. 
+- **Note**: If `LAST_PROCESSED_BLOCK_{CHAIN_ID}` is not set, the system will use `0` as the default starting block. 

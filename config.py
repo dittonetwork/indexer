@@ -26,6 +26,10 @@ META_FILLER_BATCH_SIZE = int(
 DEFAULT_IPFS_ENDPOINT = "https://ipfs.io/ipfs/"
 IPFS_ENDPOINT = os.getenv("IPFS_CONNECTOR_ENDPOINT", DEFAULT_IPFS_ENDPOINT)
 
+# Chain configuration
+# Default last processed block for new chains (hardcoded to 0)
+DEFAULT_LAST_PROCESSED_BLOCK = 0
+
 # IPFS CID validation patterns
 # CIDv0: Qm... (base58, 46 characters)
 # CIDv1: bafy... (base32, starts with 'b')

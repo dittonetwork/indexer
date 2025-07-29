@@ -4,7 +4,7 @@ import os
 from workers.chain_worker import ChainWorker
 from workers.meta_filler import MetaFillerWorker
 from core.database import Database
-from config import MONGO_URI, DB_NAME, ENV
+from config import MONGO_URI, DB_NAME, ENV, DEFAULT_LAST_PROCESSED_BLOCK
 
 
 def main():
@@ -51,29 +51,22 @@ def main():
         
         last_block_env_var = f"LAST_PROCESSED_BLOCK_{chain_id_str}"
         last_block_from_env = os.getenv(last_block_env_var)
-        if not last_block_from_env or not last_block_from_env.strip():
-            raise ValueError(f"Environment variable {last_block_env_var} is required for chain {chain_id_str} but is not set or empty")
-        
-        try:
-            last_block_value = int(last_block_from_env)
-            if last_block_value < 0:
-                raise ValueError(f"Last processed block cannot be negative: {last_block_value}")
-            chain["last_processed_block"] = last_block_value
-            logging.info(f"Using {last_block_env_var} from environment for chain {chain_id_str}.")
-        except ValueError as e:
-            logging.error(f"Invalid value for {last_block_env_var}: {last_block_from_env}. Error: {e}")
-            raise ValueError(f"Invalid last_processed_block value for chain {chain_id_str}: {last_block_from_env}")
+        if last_block_from_env and last_block_from_env.strip():
+            try:
+                last_block_value = int(last_block_from_env)
+                if last_block_value < 0:
+                    raise ValueError(f"Last processed block cannot be negative: {last_block_value}")
+                chain["last_processed_block"] = last_block_value
+                logging.info(f"Using {last_block_env_var} from environment for chain {chain_id_str}.")
+            except ValueError as e:
+                logging.error(f"Invalid value for {last_block_env_var}: {last_block_from_env}. Error: {e}")
+                raise ValueError(f"Invalid last_processed_block value for chain {chain_id_str}: {last_block_from_env}")
+        else:
+            # Use default if not specified in environment
+            chain["last_processed_block"] = DEFAULT_LAST_PROCESSED_BLOCK
+            logging.info(f"Using DEFAULT_LAST_PROCESSED_BLOCK ({DEFAULT_LAST_PROCESSED_BLOCK}) for chain {chain_id_str}.")
             
         chains_config.append(chain)
-
-    # Validate that all chains have valid last_processed_block values
-    for chain in chains_config:
-        chain_id = chain["global_chain_id"]
-        last_block = chain.get("last_processed_block")
-        if last_block is None:
-            raise ValueError(f"last_processed_block is required for chain {chain_id} but is None")
-        if last_block < 0:
-            raise ValueError(f"last_processed_block for chain {chain_id} cannot be negative: {last_block}")
 
     # --- Database Synchronization for Chains ---
     with db.db_session() as session:
@@ -88,7 +81,7 @@ def main():
                 db.insert_chain(
                     {
                         "global_chain_id": chain_id,
-                        "last_processed_block": chain.get("last_processed_block"),
+                        "last_processed_block": chain.get("last_processed_block", 0),
                         "is_synced": False,
                     },
                     session=session,
