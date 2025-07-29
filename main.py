@@ -4,7 +4,7 @@ import os
 from workers.chain_worker import ChainWorker
 from workers.meta_filler import MetaFillerWorker
 from core.database import Database
-from config import MONGO_URI, DB_NAME
+from config import MONGO_URI, DB_NAME, ENV
 
 
 def main():
@@ -16,14 +16,16 @@ def main():
     db = Database(MONGO_URI, DB_NAME, fresh_start=False)
 
     # --- Load and Process Chains Configuration ---
+    config_file = f"chains_config.{ENV}.json"
     try:
-        with open("chains_config.json") as f:
+        with open(config_file) as f:
             raw_config = json.load(f)
+        logging.info(f"Loaded configuration from {config_file}")
     except FileNotFoundError:
-        logging.error("chains_config.json not found. Exiting.")
+        logging.error(f"{config_file} not found. Exiting.")
         return
     except json.JSONDecodeError:
-        logging.error("chains_config.json is not a valid JSON file. Exiting.")
+        logging.error(f"{config_file} is not a valid JSON file. Exiting.")
         return
 
     # The config can be a list of chain objects, or a dict where keys are chain IDs.
@@ -33,7 +35,7 @@ def main():
         chains_from_file = raw_config
     else:
         logging.error(
-            "chains_config.json must contain a list or a dictionary of chain configurations."
+            f"{config_file} must contain a list or a dictionary of chain configurations."
         )
         return
 

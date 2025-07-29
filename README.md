@@ -18,6 +18,7 @@ This project connects to multiple EVM-compatible blockchains, listens for specif
 
 The following environment variables can be configured:
 
+- `ENV`: Environment name (default: `local`, options: `local`, `dev`, `prod`)
 - `MONGO_URI`: MongoDB connection string (default: `mongodb://localhost:27017/`)
 - `DB_NAME`: Database name (default: `indexer`)
 - `META_FILLER_SLEEP`: Sleep duration for meta filler worker in seconds (default: `60`)
@@ -57,6 +58,6 @@ You can run both the indexer and a fresh MongoDB instance using Docker Compose. 
 
 ## Notes
 - The default MongoDB URI in `.env.example` is set for Docker Compose networking (`mongo:27017`).
-- You can edit `chains_config.json` to set up your chain(s) before starting the indexer.
+- Configuration files are environment-specific: `chains_config.{env}.json` (e.g., `chains_config.local.json`, `chains_config.dev.json`, `chains_config.prod.json`).
 - The `last_processed_block` is now managed via environment variables instead of the config file for better deployment flexibility.
 - **Important**: Each chain must have its `LAST_PROCESSED_BLOCK_{CHAIN_ID}` environment variable set. There is no default value. 
