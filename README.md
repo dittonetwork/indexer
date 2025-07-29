@@ -14,6 +14,18 @@ This project connects to multiple EVM-compatible blockchains, listens for specif
    python main.py
    ```
 
+## Environment Variables
+
+The following environment variables can be configured:
+
+- `MONGO_URI`: MongoDB connection string (default: `mongodb://localhost:27017/`)
+- `DB_NAME`: Database name (default: `indexer`)
+- `META_FILLER_SLEEP`: Sleep duration for meta filler worker in seconds (default: `60`)
+- `META_FILLER_BATCH_SIZE`: Batch size for meta filler worker (default: `10`)
+- `IPFS_CONNECTOR_ENDPOINT`: IPFS endpoint for metadata fetching (default: `https://ipfs.io/ipfs/`)
+- `RPC_{CHAIN_ID}`: RPC URL override for specific chain (e.g., `RPC_11155111`)
+- `LAST_PROCESSED_BLOCK_{CHAIN_ID}`: **Required** starting block for specific chain (e.g., `LAST_PROCESSED_BLOCK_11155111`)
+
 ## Docker Quick Start
 
 You can run both the indexer and a fresh MongoDB instance using Docker Compose. The MongoDB data will persist across restarts.
@@ -45,4 +57,6 @@ You can run both the indexer and a fresh MongoDB instance using Docker Compose. 
 
 ## Notes
 - The default MongoDB URI in `.env.example` is set for Docker Compose networking (`mongo:27017`).
-- You can edit `chains_config.json` to set up your chain(s) before starting the indexer. 
+- You can edit `chains_config.json` to set up your chain(s) before starting the indexer.
+- The `last_processed_block` is now managed via environment variables instead of the config file for better deployment flexibility.
+- **Important**: Each chain must have its `LAST_PROCESSED_BLOCK_{CHAIN_ID}` environment variable set. There is no default value. 
