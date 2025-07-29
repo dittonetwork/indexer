@@ -24,7 +24,7 @@ The following environment variables can be configured:
 - `META_FILLER_SLEEP`: Sleep duration for meta filler worker in seconds (default: `60`)
 - `META_FILLER_BATCH_SIZE`: Batch size for meta filler worker (default: `10`)
 - `IPFS_CONNECTOR_ENDPOINT`: IPFS endpoint for metadata fetching (default: `https://ipfs.io/ipfs/`)
-- `RPC_{CHAIN_ID}`: RPC URL override for specific chain (e.g., `RPC_11155111`)
+- `RPC_URL_{CHAIN_ID}`: RPC URL override for specific chain (e.g., `RPC_URL_11155111`)
 - `LAST_PROCESSED_BLOCK_{CHAIN_ID}`: Starting block for specific chain (e.g., `LAST_PROCESSED_BLOCK_11155111`)
 
 ## Docker Quick Start

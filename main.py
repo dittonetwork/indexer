@@ -46,7 +46,7 @@ def main():
     chains_config = []
     for chain in chains_from_file:
         chain_id_str = str(chain.get("global_chain_id"))
-        env_var = f"RPC_{chain_id_str}"
+        env_var = f"RPC_URL_{chain_id_str}"
         rpc_url_from_env = os.getenv(env_var)
         if rpc_url_from_env:
             chain["rpc_url"] = rpc_url_from_env
