@@ -39,6 +39,9 @@ def main():
         )
         return
 
+    # Extract global settings from config
+    parse_retry_delay = raw_config.get("parse_retry_delay_seconds", 5)
+    
     # Process chains config to allow for environment variable overrides for RPCs and last_processed_block
     chains_config = []
     for chain in chains_from_file:
@@ -65,7 +68,10 @@ def main():
             # Use default if not specified in environment
             chain["last_processed_block"] = DEFAULT_LAST_PROCESSED_BLOCK
             logging.info(f"Using DEFAULT_LAST_PROCESSED_BLOCK ({DEFAULT_LAST_PROCESSED_BLOCK}) for chain {chain_id_str}.")
-            
+        
+        # Apply global parse retry delay to all chains
+        chain["parse_retry_delay_seconds"] = parse_retry_delay
+        
         chains_config.append(chain)
 
     # --- Database Synchronization for Chains ---
