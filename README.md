@@ -59,5 +59,5 @@ You can run both the indexer and a fresh MongoDB instance using Docker Compose. 
 ## Notes
 - The default MongoDB URI in `.env.example` is set for Docker Compose networking (`mongo:27017`).
 - Configuration files are environment-specific: `chains_config.{env}.json` (e.g., `chains_config.local.json`, `chains_config.dev.json`, `chains_config.prod.json`).
-- The `last_processed_block` is now managed via environment variables instead of the config file for better deployment flexibility.
-- **Note**: If `LAST_PROCESSED_BLOCK_{CHAIN_ID}` is not set, the system will use `0` as the default starting block. 
+- The `last_processed_block` is managed via the chains config file with optional environment variable overrides for better deployment flexibility.
+- **Note**: The `last_processed_block` value is first read from the chains config file, then overridden by the `LAST_PROCESSED_BLOCK_{CHAIN_ID}` environment variable if present. If neither is specified, the system will use `0` as the default starting block. 

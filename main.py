@@ -30,7 +30,8 @@ def main():
 
     # The config can be a list of chain objects, or a dict where keys are chain IDs.
     if isinstance(raw_config, dict):
-        chains_from_file = list(raw_config.values())
+        # Filter out non-dictionary values (like global settings) and only keep chain configurations
+        chains_from_file = [value for value in raw_config.values() if isinstance(value, dict)]
     elif isinstance(raw_config, list):
         chains_from_file = raw_config
     else:
@@ -52,6 +53,11 @@ def main():
             chain["rpc_url"] = rpc_url_from_env
             logging.info(f"Using {env_var} from environment for chain {chain_id_str}.")
         
+        # Get last_processed_block from config file (default to DEFAULT_LAST_PROCESSED_BLOCK if not present)
+        config_last_block = chain.get("last_processed_block", DEFAULT_LAST_PROCESSED_BLOCK)
+        chain["last_processed_block"] = config_last_block
+        
+        # Override with environment variable if present
         last_block_env_var = f"LAST_PROCESSED_BLOCK_{chain_id_str}"
         last_block_from_env = os.getenv(last_block_env_var)
         if last_block_from_env and last_block_from_env.strip():
@@ -60,14 +66,12 @@ def main():
                 if last_block_value < 0:
                     raise ValueError(f"Last processed block cannot be negative: {last_block_value}")
                 chain["last_processed_block"] = last_block_value
-                logging.info(f"Using {last_block_env_var} from environment for chain {chain_id_str}.")
+                logging.info(f"Using {last_block_env_var} from environment for chain {chain_id_str} (overriding config value {config_last_block}).")
             except ValueError as e:
                 logging.error(f"Invalid value for {last_block_env_var}: {last_block_from_env}. Error: {e}")
                 raise ValueError(f"Invalid last_processed_block value for chain {chain_id_str}: {last_block_from_env}")
         else:
-            # Use default if not specified in environment
-            chain["last_processed_block"] = DEFAULT_LAST_PROCESSED_BLOCK
-            logging.info(f"Using DEFAULT_LAST_PROCESSED_BLOCK ({DEFAULT_LAST_PROCESSED_BLOCK}) for chain {chain_id_str}.")
+            logging.info(f"Using last_processed_block from config ({config_last_block}) for chain {chain_id_str}.")
         
         # Apply global parse retry delay to all chains
         chain["parse_retry_delay_seconds"] = parse_retry_delay
