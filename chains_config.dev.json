@@ -1,0 +1,23 @@
+{
+    "parse_retry_delay_seconds": 5,
+    "11155111": {
+        "rpc_url": "localhost",
+        "global_chain_id": 11155111,
+        "batch_size": 100,
+        "block_delay": 2,
+        "loop_sleep_duration": 10,
+        "sync_threshold_blocks": 10,
+        "registry_contract_address": "0x5CE5E78588F4dC8556E2c607134e8b76567AECE6",
+        "last_processed_block": 0
+    }, 
+    "8453": {
+        "rpc_url": "localhost",
+        "global_chain_id": 8453,
+        "batch_size": 100,
+        "block_delay": 2,
+        "loop_sleep_duration": 10,
+        "sync_threshold_blocks": 10,
+        "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
+        "last_processed_block": 33497118
+    }
+}
