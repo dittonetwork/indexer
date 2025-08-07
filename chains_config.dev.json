@@ -7,7 +7,7 @@
         "block_delay": 2,
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
-        "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 0
     }, 
     "8453": {
@@ -17,7 +17,7 @@
         "block_delay": 2,
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
-        "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 33497118
     },
     "137": {
@@ -27,7 +27,7 @@
         "block_delay": 2,
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
-        "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 74869935
     },
     "10": {
@@ -37,7 +37,7 @@
         "block_delay": 2,
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
-        "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 139442324
     },
     "1": {
@@ -47,7 +47,7 @@
         "block_delay": 12,
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
-        "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 23082034
     },
     "42161": {
@@ -57,7 +57,7 @@
         "block_delay": 2,
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
-        "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 365565682
     }
 }
