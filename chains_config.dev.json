@@ -9,7 +9,7 @@
         "sync_threshold_blocks": 10,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 0
-    }, 
+    },
     "8453": {
         "rpc_url": "localhost",
         "global_chain_id": 8453,
@@ -44,7 +44,7 @@
         "rpc_url": "localhost",
         "global_chain_id": 1,
         "batch_size": 100,
-        "block_delay": 12,
+        "block_delay": 5,
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
@@ -56,7 +56,7 @@
         "batch_size": 100,
         "block_delay": 2,
         "loop_sleep_duration": 10,
-        "sync_threshold_blocks": 10,
+        "sync_threshold_blocks": 100,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 365565682
     }

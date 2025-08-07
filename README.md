@@ -1,63 +1,161 @@
 # Ditto Indexer
 
-This project connects to multiple EVM-compatible blockchains, listens for specific contract events, and indexes them into MongoDB. Each chain is processed in its own thread, and all writes are atomic per batch.
+A blockchain indexer for the Ditto Network that connects to multiple EVM-compatible blockchains, listens for workflow contract events, and indexes them into MongoDB.
 
-## Setup
+## Features
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Configure your MongoDB connection and chain settings in the `chains` collection.
-3. Run the indexer:
-   ```bash
-   python main.py
-   ```
+- **Multi-Chain Support**: Process multiple EVM chains simultaneously
+- **Nonce Deduplication**: Prevent duplicate run counting across networks
+- **Sync Status Tracking**: Monitor chain synchronization with configurable thresholds
+- **Batch Meta Processing**: Efficient IPFS metadata fetching with failure resilience
+- **Docker Support**: Complete containerized deployment
 
-## Environment Variables
+## Quick Start
 
-The following environment variables can be configured:
+### Using Docker Compose
 
-- `ENV`: Environment name (default: `local`, options: `local`, `dev`, `prod`)
-- `MONGO_URI`: MongoDB connection string (default: `mongodb://localhost:27017/`)
-- `DB_NAME`: Database name (default: `indexer`)
-- `META_FILLER_SLEEP`: Sleep duration for meta filler worker in seconds (default: `60`)
-- `META_FILLER_BATCH_SIZE`: Batch size for meta filler worker (default: `10`)
-- `IPFS_CONNECTOR_ENDPOINT`: IPFS endpoint for metadata fetching (default: `https://ipfs.io/ipfs/`)
-- `RPC_URL_{CHAIN_ID}`: RPC URL override for specific chain (e.g., `RPC_URL_11155111`)
-- `LAST_PROCESSED_BLOCK_{CHAIN_ID}`: Starting block for specific chain (e.g., `LAST_PROCESSED_BLOCK_11155111`)
-
-## Docker Quick Start
-
-You can run both the indexer and a fresh MongoDB instance using Docker Compose. The MongoDB data will persist across restarts.
-
-1. **Copy the example environment file:**
-   ```bash
-   cp .env.example .env
-   ```
-   (Edit `.env` if you want to change the database name or connection string.)
-
-2. **Build and start the services:**
+1. **Start the services:**
    ```bash
    docker compose up --build
    ```
-   This will start:
-   - `mongo`: MongoDB database with data persisted in a Docker volume (`mongo_data`).
-   - `indexer`: The Python indexer app, using the config in `.env` and connecting to the `mongo` service.
 
-3. **Stop the services:**
+2. **Stop services:**
    ```bash
    docker compose down
    ```
-   (The MongoDB data will be preserved in the `mongo_data` volume.)
 
-4. **To remove all data and start fresh:**
+3. **Remove all data:**
    ```bash
    docker compose down -v
    ```
 
-## Notes
-- The default MongoDB URI in `.env.example` is set for Docker Compose networking (`mongo:27017`).
-- Configuration files are environment-specific: `chains_config.{env}.json` (e.g., `chains_config.local.json`, `chains_config.dev.json`, `chains_config.prod.json`).
-- The `last_processed_block` is managed via the chains config file with optional environment variable overrides for better deployment flexibility.
-- **Note**: The `last_processed_block` value is first read from the chains config file, then overridden by the `LAST_PROCESSED_BLOCK_{CHAIN_ID}` environment variable if present. If neither is specified, the system will use `0` as the default starting block. 
+### Manual Setup
+
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your settings
+   ```
+
+3. **Configure chains:**
+   ```json
+   {
+     "11155111": {
+       "rpc_url": "https://sepolia.infura.io/v3/YOUR_KEY",
+       "global_chain_id": 11155111,
+       "last_processed_block": 0,
+       "batch_size": 100,
+       "block_delay": 2,
+       "loop_sleep_duration": 10,
+       "registry_contract_address": "0x9482F3A5a26C77b66Fc0da8Db7A6D0B67a585466",
+       "sync_threshold_blocks": 10
+     }
+   }
+   ```
+
+4. **Run the indexer:**
+   ```bash
+   python main.py
+   ```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MONGO_URI` | MongoDB connection string | `mongodb://localhost:27017/` |
+| `DB_NAME` | Database name | `indexer` |
+| `META_FILLER_SLEEP` | Sleep between meta batches (seconds) | `60` |
+| `META_FILLER_BATCH_SIZE` | Workflows per batch | `10` |
+| `IPFS_CONNECTOR_ENDPOINT` | IPFS gateway | `https://ipfs.io/ipfs/` |
+| `RPC_{CHAIN_ID}` | RPC URL override | From config file |
+
+### Chain Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `global_chain_id` | Unique chain identifier | Required |
+| `rpc_url` | RPC endpoint URL | Required |
+| `last_processed_block` | Starting block number | `0` |
+| `batch_size` | Blocks to process per batch | `100` |
+| `block_delay` | Blocks to wait before processing | `2` |
+| `loop_sleep_duration` | Sleep between loops (seconds) | `10` |
+| `registry_contract_address` | Contract address to monitor | Required |
+| `sync_threshold_blocks` | Blocks behind to consider "synced" | `5` |
+
+## Database Schema
+
+### Collections
+
+#### `chains`
+```json
+{
+  "global_chain_id": 11155111,
+  "last_processed_block": 12345678,
+  "is_synced": true
+}
+```
+
+#### `workflows`
+```json
+{
+  "ipfs_hash": "QmXWPCvyyGMUCiXX2V4AKWtRtwD1pfBBePgL4AJiDMwDBz",
+  "has_meta": true,
+  "runs": 5,
+  "is_cancelled": false,
+  "meta": { /* IPFS metadata */ }
+}
+```
+
+#### `logs`
+```json
+{
+  "event": "Run",
+  "chain_id": 11155111,
+  "blocknumber": 12345678,
+  "transaction_hash": "0x...",
+  "ipfs_hash": "QmXWPCvyyGMUCiXX2V4AKWtRtwD1pfBBePgL4AJiDMwDBz",
+  "job_id": "mint-nft-job-sepolia",
+  "nonce": 0,
+  "timestamp": "2025-07-07T09:13:24+00:00"
+}
+```
+
+## Features
+
+### Sync Status
+- Tracks synchronization status for each chain
+- Configurable threshold: `current_block - last_processed_block < sync_threshold_blocks`
+- Status stored in database and updated automatically
+
+### Meta Processing
+- Batch processing of IPFS metadata
+- Failure resilience with retry logic
+- Skips recently failed workflows temporarily
+
+### Error Handling
+- Automatic retry on parsing errors
+- Batch isolation - errors don't affect other batches
+- Individual workflow failures don't stop meta processing
+
+## Logging
+
+```
+[2025-07-15 20:12:24,761] INFO: [Chain 11155111] Marked as synced (behind by 5 blocks, threshold: 10)
+[2025-07-15 20:12:25,123] INFO: Processing batch of 8 workflows for meta fetch
+[2025-07-15 20:12:25,789] INFO: Batch completed: 6 successful, 2 failed
+```
+
+## Support
+
+For issues:
+- Check logs for error messages
+- Verify configuration files
+- Ensure RPC endpoints are accessible
+- Check MongoDB connection 
