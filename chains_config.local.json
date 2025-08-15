@@ -28,7 +28,7 @@
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 10,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 74869935
+        "last_processed_block": 75239341
     },
     "10": {
         "rpc_url": "localhost",
@@ -58,6 +58,6 @@
         "loop_sleep_duration": 10,
         "sync_threshold_blocks": 100,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 365565682
+        "last_processed_block": 368717339
     }
 }
