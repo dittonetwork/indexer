@@ -5,8 +5,8 @@
         "global_chain_id": 11155111,
         "batch_size": 100,
         "block_delay": 2,
-        "loop_sleep_duration": 10,
-        "sync_threshold_blocks": 10,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 8989850
     },
@@ -15,8 +15,8 @@
         "global_chain_id": 8453,
         "batch_size": 100,
         "block_delay": 2,
-        "loop_sleep_duration": 10,
-        "sync_threshold_blocks": 10,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 34239108
     },
@@ -25,8 +25,8 @@
         "global_chain_id": 137,
         "batch_size": 100,
         "block_delay": 2,
-        "loop_sleep_duration": 10,
-        "sync_threshold_blocks": 10,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 75239341
     },
@@ -35,8 +35,8 @@
         "global_chain_id": 10,
         "batch_size": 100,
         "block_delay": 2,
-        "loop_sleep_duration": 10,
-        "sync_threshold_blocks": 10,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 139442324
     },
@@ -45,8 +45,8 @@
         "global_chain_id": 1,
         "batch_size": 100,
         "block_delay": 5,
-        "loop_sleep_duration": 10,
-        "sync_threshold_blocks": 10,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 23082034
     },
@@ -55,8 +55,8 @@
         "global_chain_id": 42161,
         "batch_size": 100,
         "block_delay": 2,
-        "loop_sleep_duration": 10,
-        "sync_threshold_blocks": 100,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 600,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 368717339
     }
