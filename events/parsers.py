@@ -30,6 +30,7 @@ def parse_created(event, session, chain_id, timestamp, db: Database):
             "create_event_id": ObjectId(log_result.inserted_id),
             "has_meta": False,
             "runs": 0,
+            "chains_runs": {},
             "is_cancelled": False,
         }
         db.insert_workflow(workflow_doc, session=session)
@@ -74,9 +75,24 @@ def parse_run_with_metadata(event, session, chain_id, timestamp, db, tx_receipt=
         )
 
         if not nonce_already_exists:
-            # Nonce is new, increment runs counter
-            new_runs = wf.get("runs", 0) + 1
-            update = {"runs": new_runs}
+            # Nonce is new, handle runs counting
+            current_runs = wf.get("runs", 0)
+            chains_runs = wf.get("chains_runs", {})
+            
+            # Backward compatibility: if workflow has runs > 0 but no chains_runs, use old behavior
+            if current_runs > 0 and not chains_runs:
+                new_runs = current_runs + 1
+                update = {"runs": new_runs}
+            else:
+                # Use new chains_runs logic
+                chain_id_str = str(chain_id)
+                if chain_id_str not in chains_runs:
+                    chains_runs[chain_id_str] = 0
+                chains_runs[chain_id_str] += 1
+                
+                # Calculate total runs as max across all chains
+                new_runs = (max(chains_runs.values()) if chains_runs else 0) + 1
+                update = {"runs": new_runs, "chains_runs": chains_runs}
 
             # Check for execution count in the nested meta structure
             meta = wf.get("meta", {})
@@ -121,9 +137,24 @@ def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
 
     wf = db.find_workflow_by_ipfs(ipfs_hash, session=session)
     if wf:
-        # Always increment runs counter for old Run events (no nonce deduplication)
-        new_runs = wf.get("runs", 0) + 1
-        update = {"runs": new_runs}
+        # Handle runs counting with backward compatibility
+        current_runs = wf.get("runs", 0)
+        chains_runs = wf.get("chains_runs", {})
+        
+        # Backward compatibility: if workflow has runs > 0 but no chains_runs, use old behavior
+        if current_runs > 0 and not chains_runs:
+            new_runs = current_runs + 1
+            update = {"runs": new_runs}
+        else:
+            # Use new chains_runs logic
+            chain_id_str = str(chain_id)
+            if chain_id_str not in chains_runs:
+                chains_runs[chain_id_str] = 0
+            chains_runs[chain_id_str] += 1
+            
+            # Calculate total runs as max across all chains
+            new_runs = (max(chains_runs.values()) if chains_runs else 0) + 1
+            update = {"runs": new_runs, "chains_runs": chains_runs}
 
         # Check for execution count in the nested meta structure
         meta = wf.get("meta", {})
