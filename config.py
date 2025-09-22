@@ -17,6 +17,7 @@ ENV = os.getenv("ENV", "local")
 # Database configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("DB_NAME", "indexer")
+FRESH_START = os.getenv("FRESH_START", "false").strip().lower() == "true"
 
 # Meta filler configuration
 META_FILLER_SLEEP = int(os.getenv("META_FILLER_SLEEP", 60))  # seconds

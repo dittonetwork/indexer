@@ -75,6 +75,7 @@ A blockchain indexer for the Ditto Network that connects to multiple EVM-compati
 | `META_FILLER_BATCH_SIZE` | Workflows per batch | `10` |
 | `IPFS_CONNECTOR_ENDPOINT` | IPFS gateway | `https://ipfs.io/ipfs/` |
 | `RPC_{CHAIN_ID}` | RPC URL override | From config file |
+| `FRESH_START` | If true, wipe `chains`, `logs`, `workflows` on start | `false` |
 
 ### Chain Configuration
 
