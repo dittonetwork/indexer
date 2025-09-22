@@ -4,7 +4,7 @@ import os
 from workers.chain_worker import ChainWorker
 from workers.meta_filler import MetaFillerWorker
 from core.database import Database
-from config import MONGO_URI, DB_NAME, ENV, DEFAULT_LAST_PROCESSED_BLOCK
+from config import MONGO_URI, DB_NAME, ENV, DEFAULT_LAST_PROCESSED_BLOCK, FRESH_START
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
     and start all the worker threads.
     """
     # --- Configuration and DB Initialization ---
-    db = Database(MONGO_URI, DB_NAME, fresh_start=False)
+    db = Database(MONGO_URI, DB_NAME, fresh_start=FRESH_START)
 
     # --- Load and Process Chains Configuration ---
     config_file = f"chains_config.{ENV}.json"
