@@ -59,5 +59,25 @@
         "sync_threshold_blocks": 600,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
         "last_processed_block": 368717339
+    },
+    "17000": {
+        "rpc_url": "localhost",
+        "global_chain_id": 17000,
+        "batch_size": 100,
+        "block_delay": 2,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 600,
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
+        "last_processed_block": 4573667
+    },
+    "84532": {
+        "rpc_url": "localhost",
+        "global_chain_id": 84532,
+        "batch_size": 100,
+        "block_delay": 2,
+        "loop_sleep_duration": 60,
+        "sync_threshold_blocks": 600,
+        "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
+        "last_processed_block": 31519749
     }
 }
