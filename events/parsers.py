@@ -153,7 +153,7 @@ def parse_run(event, session, chain_id, timestamp, db, tx_receipt=None):
             chains_runs[chain_id_str] += 1
             
             # Calculate total runs as max across all chains
-            new_runs = (max(chains_runs.values()) if chains_runs else 0) + 1
+            new_runs = max(chains_runs.values()) if chains_runs else 1
             update = {"runs": new_runs, "chains_runs": chains_runs}
 
         # Check for execution count in the nested meta structure
