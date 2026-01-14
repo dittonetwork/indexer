@@ -8,7 +8,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
-        "last_processed_block": 34239108
+        "wasm_registry_contract_address": "0x8AC137f8a44386e3ef131D50501910Ef076e284e",
+        "last_processed_block": 34239108,
+        "wasm_last_processed_block": 40818454
     },
     "137": {
         "rpc_url": "localhost",
@@ -18,7 +20,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
-        "last_processed_block": 75239341
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 75239341,
+        "wasm_last_processed_block": 75239341
     },
     "1": {
         "rpc_url": "localhost",
@@ -28,7 +32,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
-        "last_processed_block": 23082034
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 23082034,
+        "wasm_last_processed_block": 23082034
     },
     "42161": {
         "rpc_url": "localhost",
@@ -38,6 +44,8 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 600,
         "registry_contract_address": "0x7D48195F9b04ef4001B23b012411cb2E20ca86A8",
-        "last_processed_block": 368717339
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 368717339,
+        "wasm_last_processed_block": 368717339
     }
 }

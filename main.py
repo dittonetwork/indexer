@@ -3,6 +3,7 @@ import logging
 import os
 from workers.chain_worker import ChainWorker
 from workers.meta_filler import MetaFillerWorker
+from workers.wasm_filler import WasmFillerWorker
 from core.database import Database
 from config import MONGO_URI, DB_NAME, ENV, DEFAULT_LAST_PROCESSED_BLOCK, FRESH_START
 
@@ -81,17 +82,22 @@ def main():
     # --- Database Synchronization for Chains ---
     with db.db_session() as session:
         existing_chains_in_db = {
-            chain["global_chain_id"] for chain in db.get_all_chains(session=session)
+            chain["global_chain_id"] 
+            for chain in db.get_all_chains(session=session)
+            if chain.get("global_chain_id") is not None
         }
 
         for chain in chains_config:
             chain_id = chain["global_chain_id"]
             if chain_id not in existing_chains_in_db:
                 # Add only essential info to DB, not the full config
+                # Initialize WASM last processed block from config, or use regular registry block as fallback
+                wasm_last_block = chain.get("wasm_last_processed_block", chain.get("last_processed_block", 0))
                 db.insert_chain(
                     {
                         "global_chain_id": chain_id,
                         "last_processed_block": chain.get("last_processed_block", 0),
+                        "wasm_last_processed_block": wasm_last_block,
                         "is_synced": False,
                     },
                     session=session,
@@ -100,7 +106,11 @@ def main():
 
     # --- Worker Initialization ---
     # Merge DB state with config for workers
-    all_chains_from_db = {c["global_chain_id"]: c for c in db.get_all_chains()}
+    all_chains_from_db = {
+        c["global_chain_id"]: c 
+        for c in db.get_all_chains() 
+        if c.get("global_chain_id") is not None
+    }
     worker_configs = []
     for chain in chains_config:
         chain_id = chain["global_chain_id"]
@@ -109,6 +119,11 @@ def main():
             # Config from file is source of truth, except for last_processed_block
             merged_config = chain.copy()
             merged_config["last_processed_block"] = db_doc["last_processed_block"]
+            # Load WASM last processed block from DB, or use regular registry block if not set
+            merged_config["wasm_last_processed_block"] = db_doc.get(
+                "wasm_last_processed_block", 
+                db_doc["last_processed_block"]
+            )
             worker_configs.append(merged_config)
 
     threads = []
@@ -123,6 +138,11 @@ def main():
     meta_filler = MetaFillerWorker(db)
     meta_filler.start()
     threads.append(meta_filler)
+
+    # Start the WASM code filler worker
+    wasm_filler = WasmFillerWorker(db)
+    wasm_filler.start()
+    threads.append(wasm_filler)
 
     # --- Keep Main Thread Alive ---
     logging.info("All workers started. Indexer is running.")

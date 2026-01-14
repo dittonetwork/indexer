@@ -196,3 +196,86 @@ def parse_cancelled(event, session, chain_id, timestamp, db):
             {"is_cancelled": True, "cancel_event_id": log_result.inserted_id},
             session=session,
         )
+
+def parse_wasm_created(event, session, chain_id, timestamp, db):
+    """
+    - Store event in logs: event name, chain id, blocknumber, tx hash, wasm id, ipfs hash, owner, timestamp
+    - If WASM entry with id does not exist, create it with reference to create event _id
+    - If duplicate, only store event
+    """
+    wasm_id = event["args"]["id"].hex() if hasattr(event["args"]["id"], "hex") else event["args"]["id"]
+    ipfs_hash = event["args"]["ipfsHash"]
+    owner = event["args"]["owner"]
+    block_number = event["blockNumber"]
+    tx_hash = f"0x{event['transactionHash'].hex()}"
+    
+    log_doc = {
+        "event": EventType.WASM_CREATED,
+        "chain_id": chain_id,
+        "blocknumber": block_number,
+        "transaction_hash": tx_hash,
+        "wasm_id": wasm_id,
+        "ipfs_hash": ipfs_hash,
+        "owner": owner,
+        "timestamp": timestamp,
+    }
+    log_result = db.insert_log(log_doc, session=session)
+    
+    # Check for duplicate WASM entry
+    if not db.find_wasm_by_id(wasm_id, session=session):
+        wasm_doc = {
+            "wasm_id": wasm_id,
+            "ipfs_hash": ipfs_hash,
+            "owner": owner,
+            "create_event_id": ObjectId(log_result.inserted_id),
+            "chain_id": chain_id,
+            "has_wasm": False,
+        }
+        db.insert_wasm(wasm_doc, session=session)
+
+
+def parse_wasm_updated(event, session, chain_id, timestamp, db):
+    """
+    - Store event in logs: event name, chain id, blocknumber, tx hash, wasm id, old ipfs hash, new ipfs hash, timestamp
+    - Update WASM entry with new IPFS hash and reference to update event _id
+    """
+    wasm_id = event["args"]["id"].hex() if hasattr(event["args"]["id"], "hex") else event["args"]["id"]
+    old_ipfs_hash = event["args"]["oldIpfsHash"]
+    new_ipfs_hash = event["args"]["newIpfsHash"]
+    block_number = event["blockNumber"]
+    tx_hash = f"0x{event['transactionHash'].hex()}"
+    
+    log_doc = {
+        "event": EventType.WASM_UPDATED,
+        "chain_id": chain_id,
+        "blocknumber": block_number,
+        "transaction_hash": tx_hash,
+        "wasm_id": wasm_id,
+        "old_ipfs_hash": old_ipfs_hash,
+        "new_ipfs_hash": new_ipfs_hash,
+        "timestamp": timestamp,
+    }
+    log_result = db.insert_log(log_doc, session=session)
+    
+    # Update WASM entry if it exists
+    wasm_entry = db.find_wasm_by_id(wasm_id, session=session)
+    if wasm_entry:
+        # Track update history
+        update_history = wasm_entry.get("update_history", [])
+        update_history.append({
+            "old_ipfs_hash": old_ipfs_hash,
+            "new_ipfs_hash": new_ipfs_hash,
+            "update_event_id": ObjectId(log_result.inserted_id),
+            "timestamp": timestamp,
+            "chain_id": chain_id,
+        })
+        
+        update_fields = {
+            "ipfs_hash": new_ipfs_hash,
+            "update_event_id": ObjectId(log_result.inserted_id),
+            "update_history": update_history,
+            "has_wasm": False,  # Mark as needing new code fetch since IPFS hash changed
+            # Remove old WASM code since it's been updated
+            "$unset": {"wasm_code": "", "wasm_code_size": ""},
+        }
+        db.update_wasm(wasm_id, update_fields, session=session)
