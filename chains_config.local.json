@@ -8,7 +8,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 8989850
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 8989850,
+        "wasm_last_processed_block": 8989850
     },
     "8453": {
         "rpc_url": "localhost",
@@ -18,7 +20,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 34239108
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 34239108,
+        "wasm_last_processed_block": 34239108
     },
     "137": {
         "rpc_url": "localhost",
@@ -28,7 +32,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 75239341
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 75239341,
+        "wasm_last_processed_block": 75239341
     },
     "10": {
         "rpc_url": "localhost",
@@ -38,7 +44,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 139442324
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 139442324,
+        "wasm_last_processed_block": 139442324
     },
     "1": {
         "rpc_url": "localhost",
@@ -48,7 +56,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 23082034
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 23082034,
+        "wasm_last_processed_block": 23082034
     },
     "42161": {
         "rpc_url": "localhost",
@@ -58,7 +68,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 600,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 368717339
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 368717339,
+        "wasm_last_processed_block": 368717339
     },
     "17000": {
         "rpc_url": "localhost",
@@ -68,7 +80,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 600,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 4573667
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 4573667,
+        "wasm_last_processed_block": 4573667
     },
     "84532": {
         "rpc_url": "localhost",
@@ -78,6 +92,8 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 600,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 31519749
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 31519749,
+        "wasm_last_processed_block": 31519749
     }
 }

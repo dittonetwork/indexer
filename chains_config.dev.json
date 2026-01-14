@@ -8,7 +8,9 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 60,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 8989850
+        "wasm_registry_contract_address": "0x8AC137f8a44386e3ef131D50501910Ef076e284e",
+        "last_processed_block": 8989850,
+        "wasm_last_processed_block": 10044611
     },
     "84532": {
         "rpc_url": "localhost",
@@ -18,6 +20,8 @@
         "loop_sleep_duration": 60,
         "sync_threshold_blocks": 600,
         "registry_contract_address": "0x580F57c1668d9272aE54168f630cc84b10ec65F7",
-        "last_processed_block": 31519749
+        "wasm_registry_contract_address": "--",
+        "last_processed_block": 31519749,
+        "wasm_last_processed_block": 31519749
     }
 }

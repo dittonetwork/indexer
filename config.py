@@ -43,6 +43,8 @@ class EventType(str, Enum):
     RUN = "Run"
     RUN_WITH_METADATA = "RunWithMetadata"
     CANCELLED = "Cancelled"
+    WASM_CREATED = "WasmCreated"
+    WASM_UPDATED = "WasmUpdated"
 
     @classmethod
     def get_target_names(cls):
