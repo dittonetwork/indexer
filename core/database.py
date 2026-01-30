@@ -14,6 +14,12 @@ class Database:
             self.db.chains.delete_many({})
             self.db.logs.delete_many({})
             self.db.workflows.delete_many({})
+            self.db.wasm_modules.delete_many({})
+        
+        # Ensure collections exist (required for transactions)
+        # MongoDB transactions require collections to exist before use
+        self._ensure_collections_exist()
+        
         # Ensure text index on ipfs_hash in workflows
         try:
             self.db.workflows.create_index(
@@ -22,6 +28,32 @@ class Database:
             logging.info("Ensured text index on workflows.ipfs_hash.")
         except Exception as e:
             logging.error(f"Failed to create text index on workflows.ipfs_hash: {e}")
+        
+        # Ensure index on wasm_id in wasm_modules for faster lookups
+        try:
+            # Check if index already exists
+            existing_indexes = [idx["name"] for idx in self.db.wasm_modules.list_indexes()]
+            if "wasm_id_index" not in existing_indexes:
+                # Try to create unique index first
+                try:
+                    self.db.wasm_modules.create_index(
+                        [("wasm_id", 1)], name="wasm_id_index", background=True, unique=True
+                    )
+                    logging.info("Ensured unique index on wasm_modules.wasm_id.")
+                except Exception as unique_error:
+                    # If unique index fails (due to duplicates), create non-unique index
+                    if "duplicate" in str(unique_error).lower() or "11000" in str(unique_error):
+                        logging.warning(f"Could not create unique index on wasm_modules.wasm_id (duplicates exist), creating non-unique index instead.")
+                        self.db.wasm_modules.create_index(
+                            [("wasm_id", 1)], name="wasm_id_index", background=True, unique=False
+                        )
+                        logging.info("Created non-unique index on wasm_modules.wasm_id.")
+                    else:
+                        raise
+            else:
+                logging.info("Index wasm_id_index already exists on wasm_modules.")
+        except Exception as e:
+            logging.error(f"Failed to create index on wasm_modules.wasm_id: {e}")
 
     @contextmanager
     def db_session(self):
@@ -33,7 +65,11 @@ class Database:
                     session.commit_transaction()
                 except Exception as e:
                     logging.error(f"Transaction failed: {e}")
-                    session.abort_transaction()
+                    try:
+                        if session.in_transaction:
+                            session.abort_transaction()
+                    except Exception as abort_error:
+                        logging.error(f"Failed to abort transaction cleanly: {abort_error}")
                     raise
 
     # --- Chains ---
@@ -48,6 +84,14 @@ class Database:
         return self.db.chains.update_one(
             {"global_chain_id": chain_id},
             {"$set": {"last_processed_block": block_number}},
+            session=session,
+        )
+
+    def update_chain_wasm_last_processed(self, chain_id, block_number, session=None):
+        """Update the last processed block for WASM registry on a chain"""
+        return self.db.chains.update_one(
+            {"global_chain_id": chain_id},
+            {"$set": {"wasm_last_processed_block": block_number}},
             session=session,
         )
 
@@ -138,3 +182,95 @@ class Database:
             session=session,
         )
         return result is not None
+
+    def _ensure_collections_exist(self):
+        """Ensure all collections exist before transactions (MongoDB requirement)"""
+        # Create collections by inserting and immediately deleting a dummy document
+        # This ensures the collection exists for transactions
+        collections = ["chains", "logs", "workflows", "wasm_modules"]
+        for collection_name in collections:
+            try:
+                collection = getattr(self.db, collection_name)
+                # Try to insert an empty document and delete it immediately
+                # This creates the collection if it doesn't exist
+                result = collection.insert_one({})
+                collection.delete_one({"_id": result.inserted_id})
+            except Exception as e:
+                # If insert fails, try to verify collection exists by checking if it's in list_collections
+                try:
+                    if collection_name in [c["name"] for c in self.db.list_collections()]:
+                        # Collection exists, that's fine
+                        pass
+                    else:
+                        logging.warning(f"Could not ensure collection {collection_name} exists: {e}")
+                except Exception:
+                    logging.warning(f"Could not ensure collection {collection_name} exists: {e}")
+
+    # --- WASM Modules ---
+    def insert_wasm(self, wasm_doc, session=None):
+        """Insert a WASM module document into the wasm_modules collection"""
+        return self.db.wasm_modules.insert_one(wasm_doc, session=session)
+
+    def find_wasm_by_id(self, wasm_id, session=None):
+        """Find a WASM module by its ID (bytes32)"""
+        return self.db.wasm_modules.find_one({"wasm_id": wasm_id}, session=session)
+
+    def update_wasm(self, wasm_id, update_fields, session=None):
+        """Update WASM module fields by WASM ID"""
+        # Separate $set and $unset operations
+        set_fields = {k: v for k, v in update_fields.items() if k != "$unset"}
+        unset_fields = update_fields.get("$unset", {})
+        
+        update_op = {}
+        if set_fields:
+            update_op["$set"] = set_fields
+        if unset_fields:
+            update_op["$unset"] = unset_fields
+        
+        return self.db.wasm_modules.update_one(
+            {"wasm_id": wasm_id}, update_op, session=session
+        )
+
+    def find_wasm_without_code(self, session=None):
+        """Find one WASM module that hasn't had its code fetched yet"""
+        return self.db.wasm_modules.find_one({"has_wasm": False}, session=session)
+
+    def find_wasms_without_code_batch(
+        self, limit=10, skip_recent_failures=True, session=None
+    ):
+        """Find multiple WASM modules that haven't had their code fetched yet"""
+        query = {"has_wasm": False}
+
+        if skip_recent_failures:
+            # Skip WASM modules that failed recently (within last hour)
+            from datetime import datetime, timedelta
+
+            one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+            query["$or"] = [
+                {"wasm_fetch_last_failed": {"$exists": False}},
+                {"wasm_fetch_last_failed": {"$lt": one_hour_ago}},
+                {"wasm_fetch_failure_count": {"$lt": 3}},  # Allow up to 3 retries
+            ]
+
+        return list(self.db.wasm_modules.find(query, session=session).limit(limit))
+
+    def mark_wasm_fetch_failure(self, wasm_id, session=None):
+        """Mark a WASM module as having failed code fetch"""
+        from datetime import datetime
+
+        return self.db.wasm_modules.update_one(
+            {"wasm_id": wasm_id},
+            {
+                "$set": {"wasm_fetch_last_failed": datetime.utcnow()},
+                "$inc": {"wasm_fetch_failure_count": 1},
+            },
+            session=session,
+        )
+
+    def clear_wasm_fetch_failures(self, wasm_id, session=None):
+        """Clear WASM code fetch failure tracking for a WASM module"""
+        return self.db.wasm_modules.update_one(
+            {"wasm_id": wasm_id},
+            {"$unset": {"wasm_fetch_last_failed": 1, "wasm_fetch_failure_count": 1}},
+            session=session,
+        )
